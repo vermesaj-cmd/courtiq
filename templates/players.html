@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Roster — CourtIQ{% endblock %}
+
+{% block content %}
+<h3 class="fw-bold mb-3"><i class="bi bi-people"></i> Roster</h3>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="/players" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Search</label>
+                <input type="text" class="form-control" name="q" value="{{ query }}" placeholder="Name...">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Position</label>
+                <select class="form-select" name="position">
+                    <option value="">All</option>
+                    {% for p in positions %}
+                    <option value="{{ p }}" {% if position == p %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All</option>
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Sort by</label>
+                <select class="form-select" name="sort">
+                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
+                    <option value="position" {% if sort_by == 'position' %}selected{% endif %}>Position</option>
+                    <option value="number" {% if sort_by == 'number' %}selected{% endif %}>Jersey #</option>
+                    <option value="year" {% if sort_by == 'year' %}selected{% endif %}>Class Year</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-warning w-100"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="text-muted">{{ players|length }} player{{ 's' if players|length != 1 }}</span>
+    <a href="/players/add" class="btn btn-sm btn-warning"><i class="bi bi-person-plus"></i> Add Player</a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>Player</th><th>Pos</th><th>#</th><th>Height</th><th>Status</th><th>Class</th><th>PPG</th><th>RPG</th><th>APG</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in players %}
+                    <tr onclick="location.href='/players/{{ p.id }}'" style="cursor:pointer">
+                        <td class="fw-semibold">{{ p.first_name }} {{ p.last_name }}</td>
+                        <td><span class="pos-badge pos-{{ p.position }}">{{ p.position }}</span></td>
+                        <td>{{ p.jersey_number or '—' }}</td>
+                        <td>{{ height_to_display(p.height_inches) }}</td>
+                        <td><span class="status-{{ p.status }}">{{ p.status|capitalize }}</span></td>
+                        <td>{{ p.grad_year }}</td>
+                        <td>{{ p.ppg or '0.0' }}</td>
+                        <td>{{ p.rpg or '0.0' }}</td>
+                        <td>{{ p.apg or '0.0' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if not players %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">No players found. <a href="/players/add">Add one</a>.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

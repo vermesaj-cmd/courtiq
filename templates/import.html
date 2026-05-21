@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Import / Export — CourtIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0"><i class="bi bi-cloud-upload"></i> Import / Export</h3>
+    <a href="/export" class="btn btn-outline-warning"><i class="bi bi-download"></i> Export CSV</a>
+</div>
+
+{% if imported is not none %}
+<div class="card mb-4">
+    <div class="card-header">Import Results</div>
+    <div class="card-body">
+        <div class="row text-center mb-3">
+            <div class="col">
+                <div class="stat-value text-success" style="font-size:1.5rem;">{{ imported }}</div>
+                <div class="stat-label">Imported</div>
+            </div>
+            <div class="col">
+                <div class="stat-value text-danger" style="font-size:1.5rem;">{{ skipped }}</div>
+                <div class="stat-label">Skipped</div>
+            </div>
+        </div>
+        {% if errors %}
+        <div class="alert alert-warning py-2" style="font-size:0.85rem;">
+            <strong>Issues:</strong>
+            <ul class="mb-0 mt-1">
+                {% for e in errors %}
+                <li>{{ e }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <a href="/players" class="btn btn-warning"><i class="bi bi-list"></i> View Roster</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- CSV Upload -->
+<div class="card mb-4">
+    <div class="card-header">Import Players from CSV</div>
+    <div class="card-body">
+        <form method="post" action="/import" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="form-label">Upload CSV File</label>
+                <input type="file" class="form-control" name="csv_file" accept=".csv">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Or Paste CSV Data</label>
+                <textarea class="form-control" name="csv_text" rows="8" placeholder="first_name,last_name,position,jersey,height,weight,ppg,rpg,apg&#10;John,Smith,PG,1,6'1,175,12.5,3.2,5.1&#10;..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-warning"><i class="bi bi-upload"></i> Import</button>
+        </form>
+    </div>
+</div>
+
+<!-- Field Mapping Guide -->
+<div class="card mb-4">
+    <div class="card-header">Accepted Column Names</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:0.85rem;">
+                <thead>
+                    <tr><th>Field</th><th>Accepted Headers</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td class="fw-semibold">First Name *</td><td><code>first_name, first, fname</code></td><td>Required</td></tr>
+                    <tr><td class="fw-semibold">Last Name *</td><td><code>last_name, last, lname, surname</code></td><td>Required</td></tr>
+                    <tr><td class="fw-semibold">Position</td><td><code>position, pos</code></td><td>PG, SG, SF, PF, C (defaults to SG)</td></tr>
+                    <tr><td class="fw-semibold">Jersey</td><td><code>jersey_number, jersey, number, #</code></td><td></td></tr>
+                    <tr><td class="fw-semibold">Height</td><td><code>height, ht</code></td><td>Accepts 6'2, 6-2, 6.2, or inches</td></tr>
+                    <tr><td class="fw-semibold">Weight</td><td><code>weight, wt, lbs</code></td><td>Pounds</td></tr>
+                    <tr><td class="fw-semibold">Class Year</td><td><code>grad_year, class, year</code></td><td>Graduation year (defaults to 2026)</td></tr>
+                    <tr><td class="fw-semibold">GPA</td><td><code>gpa</code></td><td></td></tr>
+                    <tr><td class="fw-semibold">Games Played</td><td><code>games_played, gp, games, g</code></td><td></td></tr>
+                    <tr><td class="fw-semibold">Minutes</td><td><code>minutes_pg, mpg, minutes</code></td><td>Per game</td></tr>
+                    <tr><td class="fw-semibold">Points</td><td><code>ppg, pts, points</code></td><td>Per game</td></tr>
+                    <tr><td class="fw-semibold">Rebounds</td><td><code>rpg, reb, rebounds</code></td><td>Per game</td></tr>
+                    <tr><td class="fw-semibold">Assists</td><td><code>apg, ast, assists</code></td><td>Per game</td></tr>
+                    <tr><td class="fw-semibold">Steals</td><td><code>spg, stl, steals</code></td><td>Per game</td></tr>
+                    <tr><td class="fw-semibold">Blocks</td><td><code>bpg, blk, blocks</code></td><td>Per game</td></tr>
+                    <tr><td class="fw-semibold">FG%</td><td><code>fg_pct, fg%, fg</code></td><td></td></tr>
+                    <tr><td class="fw-semibold">3PT%</td><td><code>three_pct, 3pt%, 3pt, 3p%</code></td><td></td></tr>
+                    <tr><td class="fw-semibold">FT%</td><td><code>ft_pct, ft%, ft</code></td><td></td></tr>
+                    <tr><td class="fw-semibold">Turnovers</td><td><code>topg, to, turnovers, tov</code></td><td>Per game</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Danger Zone -->
+<div class="card border-danger">
+    <div class="card-header text-danger"><i class="bi bi-exclamation-triangle"></i> Danger Zone</div>
+    <div class="card-body">
+        <p class="text-muted mb-2">Clear all players and associated data from the database. This cannot be undone.</p>
+        <form method="post" action="/clear-db" class="delete-form">
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Clear All Data</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

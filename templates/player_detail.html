@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% set p = data.player %}
+{% set sa = data.season_averages[0] if data.season_averages else {} %}
+{% set eval_data = data.eval_data %}
+{% set avgs = eval_data.averages if eval_data.evaluated else None %}
+
+{% block title %}{{ p.first_name }} {{ p.last_name }} — CourtIQ{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <span class="pos-badge pos-{{ p.position }} me-2" style="font-size:1rem;width:40px;height:40px;line-height:40px;">{{ p.position }}</span>
+            {% if p.jersey_number %}#{{ p.jersey_number }} {% endif %}{{ p.first_name }} {{ p.last_name }}
+        </h2>
+        <span class="text-muted">
+            {{ height_to_display(p.height_inches) }}
+            {% if p.weight %} &middot; {{ p.weight }} lbs{% endif %}
+            {% if p.wingspan_inches %} &middot; {{ height_to_display(p.wingspan_inches) }} WS{% endif %}
+            &middot; Class of {{ p.grad_year }}
+            {% if p.gpa %} &middot; {{ p.gpa }} GPA{% endif %}
+            &middot; <span class="status-{{ p.status }}">{{ p.status|capitalize }}</span>
+        </span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/players/{{ p.id }}/evaluate" class="btn btn-warning btn-sm"><i class="bi bi-clipboard-check"></i> Evaluate</a>
+        <a href="/players/{{ p.id }}/game-log" class="btn btn-outline-warning btn-sm"><i class="bi bi-journal-plus"></i> Game Log</a>
+        <a href="/players/{{ p.id }}/edit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+        <form method="post" action="/players/{{ p.id }}/delete" class="delete-form d-inline">
+            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column -->
+    <div class="col-lg-5">
+        <!-- Season Averages -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-bar-chart"></i> Season Averages</span>
+                {% if sa %}
+                <small class="text-muted">{% if sa.get('is_manual') %}Manual{% else %}From Game Logs{% endif %}</small>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if sa %}
+                <div class="row text-center">
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.games_played or 0 }}</div><div class="stat-label">GP</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.mpg or 0 }}</div><div class="stat-label">MPG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.ppg or 0 }}</div><div class="stat-label">PPG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.rpg or 0 }}</div><div class="stat-label">RPG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.apg or 0 }}</div><div class="stat-label">APG</div></div>
+                </div>
+                <div class="row text-center mt-2">
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.spg or 0 }}</div><div class="stat-label">SPG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.bpg or 0 }}</div><div class="stat-label">BPG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.fg_pct or 0 }}%</div><div class="stat-label">FG%</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.three_pct or 0 }}%</div><div class="stat-label">3P%</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.2rem;">{{ sa.ft_pct or 0 }}%</div><div class="stat-label">FT%</div></div>
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">No stats yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Mini Shot Chart -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-grid-3x3"></i> Shot Chart</span>
+                <a href="/players/{{ p.id }}/shot-chart" class="btn btn-sm btn-outline-warning">Edit</a>
+            </div>
+            <div class="card-body text-center">
+                {% if data.shot_chart %}
+                <svg viewBox="0 0 500 470" style="max-width:300px; width:100%; opacity:0.9;">
+                    <rect x="0" y="0" width="500" height="470" fill="none" stroke="#30363d" stroke-width="2"/>
+                    <rect x="170" y="280" width="160" height="190" fill="none" stroke="#30363d" stroke-width="1"/>
+                    <circle cx="250" cy="420" r="8" fill="none" stroke="#ff8c00" stroke-width="2"/>
+                    <path d="M 30,470 L 30,310 Q 30,150 250,130 Q 470,150 470,310 L 470,470" fill="none" stroke="#30363d" stroke-width="1"/>
+                    {% for z in data.shot_chart %}
+                    {% if z.fg_attempted > 0 %}
+                    {% set pct = z.fg_made / z.fg_attempted * 100 %}
+                    {% set color = 'rgba(76,175,80,0.6)' if pct >= 45 else ('rgba(255,193,7,0.6)' if pct >= 30 else 'rgba(239,83,80,0.6)') %}
+                    {% else %}
+                    {% set color = '#21262d' %}
+                    {% endif %}
+                    {% if z.zone_id == 1 %}<circle cx="250" cy="420" r="35" fill="{{ color }}"/>
+                    {% elif z.zone_id == 2 %}<rect x="170" y="280" width="160" height="140" fill="{{ color }}"/>
+                    {% elif z.zone_id == 7 %}<rect x="0" y="310" width="30" height="160" fill="{{ color }}"/>
+                    {% elif z.zone_id == 8 %}<rect x="470" y="310" width="30" height="160" fill="{{ color }}"/>
+                    {% endif %}
+                    {% endfor %}
+                </svg>
+                {% else %}
+                <p class="text-muted mb-0">No shot chart data. <a href="/players/{{ p.id }}/shot-chart">Add data</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Conditioning -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-heart-pulse"></i> Conditioning</span>
+                <a href="/players/{{ p.id }}/conditioning" class="btn btn-sm btn-outline-warning">Add</a>
+            </div>
+            <div class="card-body p-0">
+                {% if data.conditioning %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Date</th><th>Mile</th><th>Shuttle</th><th>Vert</th><th>Weight</th></tr></thead>
+                        <tbody>
+                            {% for c in data.conditioning[:5] %}
+                            <tr>
+                                <td>{{ c.log_date }}</td>
+                                <td>{{ c.mile_time_sec or '—' }}{% if c.mile_time_sec %}s{% endif %}</td>
+                                <td>{{ c.shuttle_sec or '—' }}{% if c.shuttle_sec %}s{% endif %}</td>
+                                <td>{{ c.vertical_inches or '—' }}{% if c.vertical_inches %}"{% endif %}</td>
+                                <td>{{ c.body_weight or '—' }}{% if c.body_weight %} lbs{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-muted text-center">No conditioning data. <a href="/players/{{ p.id }}/conditioning">Log a benchmark</a>.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Goals -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-bullseye"></i> Development Goals</span>
+                <a href="/players/{{ p.id }}/goals" class="btn btn-sm btn-outline-warning">Manage</a>
+            </div>
+            <div class="card-body">
+                {% if data.goals %}
+                {% for g in data.goals[:4] %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span><span class="cat-badge cat-{{ g.category }}">{{ g.category }}</span> {{ g.description }}</span>
+                        {% if g.status == 'achieved' %}<span class="badge bg-success">Done</span>
+                        {% elif g.status == 'behind' %}<span class="badge bg-danger">Behind</span>
+                        {% else %}<span class="badge bg-info">Active</span>{% endif %}
+                    </div>
+                    {% if g.target_value %}
+                    {% set pct = ((g.current_value or 0) / g.target_value * 100)|round(0)|int %}
+                    <div class="progress" style="height:6px;">
+                        <div class="progress-bar" style="width:{{ [pct, 100]|min }}%;"></div>
+                    </div>
+                    <small class="text-muted">{{ g.current_value or 0 }}/{{ g.target_value }} {{ g.unit }}</small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted text-center mb-0">No goals set. <a href="/players/{{ p.id }}/goals">Add goals</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-7">
+        <!-- Coach Evaluations -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-clipboard-check"></i> Coach Evaluations ({{ eval_data.num_evaluations }})</span>
+                <a href="/players/{{ p.id }}/evaluate" class="btn btn-sm btn-outline-warning">New Eval</a>
+            </div>
+            <div class="card-body">
+                {% if avgs %}
+                <!-- Averaged Ratings -->
+                {% set categories = [
+                    ('Athleticism', [('SPD', avgs.speed), ('VRT', avgs.vertical), ('AGL', avgs.agility), ('STR', avgs.strength), ('END', avgs.endurance)]),
+                    ('Skills', [('BH', avgs.ball_handling), ('PAS', avgs.passing), ('SHT', avgs.shooting_form), ('PST', avgs.post_moves), ('OBM', avgs.off_ball_movement), ('TRN', avgs.transition_play)]),
+                    ('Intangibles', [('IQ', avgs.basketball_iq), ('MTR', avgs.motor), ('CCH', avgs.coachability), ('LDR', avgs.leadership), ('CLT', avgs.clutch), ('DEF', avgs.defensive_instincts)])
+                ] %}
+                {% for cat_name, fields in categories %}
+                <h6 class="text-muted text-uppercase" style="font-size:0.7rem;letter-spacing:1px;">{{ cat_name }}</h6>
+                <div class="row mb-3">
+                    {% for abbr, val in fields %}
+                    <div class="col">
+                        <div class="text-center">
+                            <div style="font-size:0.65rem;color:#8b949e;">{{ abbr }}</div>
+                            <div class="fw-bold {% if val and val >= 7 %}text-warning{% elif val and val < 4 %}text-danger{% else %}text-info{% endif %}">{{ val or '—' }}</div>
+                            {% if val %}
+                            <div class="score-bar-wrap" style="height:6px;">
+                                <div class="score-bar {% if val >= 7 %}high{% elif val >= 4 %}mid{% else %}low{% endif %}" style="width:{{ val * 10 }}%;"></div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <hr class="border-secondary">
+                {% endif %}
+
+                <!-- Individual Evaluations -->
+                {% for ev in eval_data.evaluations[:5] %}
+                <div class="mb-3 p-2" style="background:#21262d;border-radius:8px;">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong>{{ ev.coach_name }}</strong>
+                        <div>
+                            <small class="text-muted">{{ ev.eval_date }}</small>
+                            <form method="post" action="/evaluations/{{ ev.id }}/delete" class="d-inline delete-form ms-1">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="padding:0 4px;font-size:0.7rem;"><i class="bi bi-x"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    {% if ev.notes %}<small class="text-muted">{{ ev.notes }}</small>{% endif %}
+                    <div class="d-flex flex-wrap gap-1 mt-1" style="font-size:0.7rem;">
+                        {% set fields = [('SPD', ev.speed), ('VRT', ev.vertical), ('AGL', ev.agility), ('STR', ev.strength), ('END', ev.endurance), ('BH', ev.ball_handling), ('PAS', ev.passing), ('SHT', ev.shooting_form), ('PST', ev.post_moves), ('OBM', ev.off_ball_movement), ('TRN', ev.transition_play), ('IQ', ev.basketball_iq), ('MTR', ev.motor), ('CCH', ev.coachability), ('LDR', ev.leadership), ('CLT', ev.clutch), ('DEF', ev.defensive_instincts)] %}
+                        {% for abbr, val in fields %}
+                        {% if val %}
+                        <span class="badge {% if val >= 7 %}text-bg-warning{% elif val >= 4 %}text-bg-secondary{% else %}text-bg-danger{% endif %}">{{ abbr }} {{ val }}</span>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not eval_data.evaluations %}
+                <p class="text-muted text-center mb-0">No evaluations yet. <a href="/players/{{ p.id }}/evaluate">Submit one</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Game Logs -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-journal-text"></i> Game Logs ({{ data.game_logs|length }})</span>
+                <a href="/players/{{ p.id }}/game-log" class="btn btn-sm btn-outline-warning">Add</a>
+            </div>
+            <div class="card-body p-0">
+                {% if data.game_logs %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead><tr><th>Date</th><th>Opp</th><th>W/L</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>FG</th><th>3PT</th><th>FT</th><th>TO</th><th></th></tr></thead>
+                        <tbody>
+                            {% for g in data.game_logs[:20] %}
+                            <tr>
+                                <td>{{ g.game_date }}</td>
+                                <td>{{ g.opponent }}</td>
+                                <td>{% if g.result %}<span class="badge {% if g.result == 'W' %}bg-success{% else %}bg-danger{% endif %}">{{ g.result }}</span>{% else %}—{% endif %}</td>
+                                <td>{{ g.minutes }}</td>
+                                <td class="fw-semibold">{{ g.points }}</td>
+                                <td>{{ g.rebounds }}</td>
+                                <td>{{ g.assists }}</td>
+                                <td>{{ g.steals }}</td>
+                                <td>{{ g.blocks }}</td>
+                                <td>{{ g.fg_made }}/{{ g.fg_attempted }}</td>
+                                <td>{{ g.three_made }}/{{ g.three_attempted }}</td>
+                                <td>{{ g.ft_made }}/{{ g.ft_attempted }}</td>
+                                <td>{{ g.turnovers }}</td>
+                                <td>
+                                    <a href="/players/{{ p.id }}/game-log/{{ g.id }}/edit" class="btn btn-sm btn-outline-secondary" style="padding:0 4px;font-size:0.7rem;"><i class="bi bi-pencil"></i></a>
+                                    <form method="post" action="/game-logs/{{ g.id }}/delete" class="d-inline delete-form">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" style="padding:0 4px;font-size:0.7rem;"><i class="bi bi-x"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-muted text-center">No game logs. <a href="/players/{{ p.id }}/game-log">Add one</a>.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

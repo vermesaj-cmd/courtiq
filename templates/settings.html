@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Settings — CourtIQ{% endblock %}
+
+{% block content %}
+<h3 class="fw-bold mb-3"><i class="bi bi-gear"></i> Team Settings</h3>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="/settings">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Team Name *</label>
+                    <input type="text" class="form-control" name="team_name" value="{{ config.team_name }}" required placeholder="e.g. Lincoln Lions">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Season *</label>
+                    <input type="text" class="form-control" name="season" value="{{ config.season }}" required placeholder="e.g. 2025-26">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Head Coach</label>
+                    <input type="text" class="form-control" name="coach_name" value="{{ config.coach_name }}" placeholder="e.g. Coach Johnson">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">School Name</label>
+                    <input type="text" class="form-control" name="school_name" value="{{ config.school_name }}" placeholder="e.g. Lincoln High School">
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-warning"><i class="bi bi-check-lg"></i> Save Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

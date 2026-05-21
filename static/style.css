@@ -1,0 +1,277 @@
+/* ── CourtIQ Theme ──────────────────────────────────────────────── */
+:root {
+    --hs-orange: #ff8c00;
+    --hs-orange-dim: #cc7000;
+    --hs-bg: #0d1117;
+    --hs-card: #161b22;
+    --hs-border: #30363d;
+}
+
+body {
+    background: var(--hs-bg);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.navbar {
+    background: var(--hs-card) !important;
+    border-color: var(--hs-border) !important;
+}
+
+.navbar-brand {
+    color: var(--hs-orange) !important;
+    font-size: 1.4rem;
+    letter-spacing: -0.5px;
+}
+
+/* Cards */
+.card, .stat-card {
+    background: var(--hs-card);
+    border: 1px solid var(--hs-border);
+    border-radius: 12px;
+}
+
+.stat-card {
+    padding: 1.25rem;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(255, 140, 0, 0.1);
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--hs-orange);
+    line-height: 1.1;
+}
+
+.stat-card .stat-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8b949e;
+    margin-top: 0.25rem;
+}
+
+/* Score bars */
+.score-bar-wrap {
+    background: #21262d;
+    border-radius: 8px;
+    height: 10px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.score-bar {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.6s ease;
+}
+
+.score-bar.high { background: linear-gradient(90deg, #ffd700, #ff8c00); }
+.score-bar.mid { background: linear-gradient(90deg, #4fc3f7, #0288d1); }
+.score-bar.low { background: linear-gradient(90deg, #ef5350, #c62828); }
+
+/* Tables */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: rgba(255, 140, 0, 0.05);
+}
+
+.table thead th {
+    border-bottom: 2px solid var(--hs-orange);
+    color: var(--hs-orange);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+}
+
+.table td { vertical-align: middle; }
+
+/* Position badges */
+.pos-badge {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+    text-align: center;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.pos-PG { background: #1e88e5; color: #fff; }
+.pos-SG { background: #43a047; color: #fff; }
+.pos-SF { background: #fb8c00; color: #fff; }
+.pos-PF { background: #e53935; color: #fff; }
+.pos-C  { background: #8e24aa; color: #fff; }
+
+/* Status badges */
+.status-active { color: #4caf50; }
+.status-injured { color: #f44336; }
+.status-inactive { color: #8b949e; }
+
+/* Forms */
+.form-control, .form-select {
+    background: #21262d;
+    border-color: var(--hs-border);
+    color: #e6edf3;
+}
+
+.form-control:focus, .form-select:focus {
+    background: #21262d;
+    border-color: var(--hs-orange);
+    box-shadow: 0 0 0 0.2rem rgba(255, 140, 0, 0.25);
+    color: #e6edf3;
+}
+
+.form-label {
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: #c9d1d9;
+}
+
+.btn-warning {
+    background: var(--hs-orange);
+    border-color: var(--hs-orange);
+    color: #000;
+    font-weight: 600;
+}
+
+.btn-warning:hover {
+    background: var(--hs-orange-dim);
+    border-color: var(--hs-orange-dim);
+    color: #000;
+}
+
+/* Slider labels */
+.rating-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #8b949e;
+    margin-top: -4px;
+}
+
+/* Comparison table */
+.compare-table th {
+    width: 160px;
+    color: #8b949e;
+    font-weight: 500;
+}
+
+/* Progress bars */
+.progress { background: #21262d; }
+.progress-bar { background: var(--hs-orange); }
+
+/* Shot chart */
+.court-zone {
+    cursor: pointer;
+    transition: opacity 0.2s;
+    stroke: #30363d;
+    stroke-width: 1;
+}
+
+.court-zone:hover {
+    opacity: 0.8;
+    stroke: var(--hs-orange);
+    stroke-width: 2;
+}
+
+.zone-label {
+    fill: #e6edf3;
+    font-size: 13px;
+    font-weight: 700;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.zone-name-label {
+    fill: #8b949e;
+    font-size: 9px;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.zone-editor {
+    position: absolute;
+    background: var(--hs-card);
+    border: 1px solid var(--hs-orange);
+    border-radius: 10px;
+    padding: 12px;
+    z-index: 100;
+    min-width: 200px;
+}
+
+/* Depth chart */
+.player-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #21262d;
+    border: 1px solid var(--hs-border);
+    border-radius: 8px;
+    cursor: grab;
+    font-size: 0.85rem;
+    margin: 4px;
+    transition: border-color 0.15s;
+    white-space: nowrap;
+}
+
+.player-chip:active { cursor: grabbing; }
+.player-chip.dragging { opacity: 0.4; }
+
+.drop-zone {
+    min-height: 60px;
+    border: 2px dashed var(--hs-border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, background 0.2s;
+    padding: 4px;
+}
+
+.drop-zone.drag-over {
+    border-color: var(--hs-orange);
+    background: rgba(255, 140, 0, 0.1);
+}
+
+.drop-zone .player-chip { margin: 0; cursor: grab; }
+
+.drop-zone-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #484f58;
+    pointer-events: none;
+}
+
+/* Goal category badges */
+.cat-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cat-shooting { background: #e53935; color: #fff; }
+.cat-conditioning { background: #1e88e5; color: #fff; }
+.cat-skills { background: #43a047; color: #fff; }
+.cat-defense { background: #8e24aa; color: #fff; }
+.cat-rebounding { background: #fb8c00; color: #fff; }
+.cat-passing { background: #00acc1; color: #fff; }
+.cat-other { background: #546e7a; color: #fff; }
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+    .stat-card .stat-value { font-size: 1.5rem; }
+    .stat-card { padding: 0.75rem; }
+}

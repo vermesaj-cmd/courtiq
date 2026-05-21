@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: courtiq
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --config gunicorn_config.py
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.6"

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Depth Chart — CourtIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0"><i class="bi bi-diagram-3"></i> Depth Chart</h3>
+    <div class="d-flex gap-2 align-items-center">
+        {% if lineups %}
+        <select class="form-select form-select-sm" style="width:auto;" id="lineup-selector" onchange="if(this.value) location.href='/depth-chart?lineup_id='+this.value">
+            <option value="">Load Lineup...</option>
+            {% for l in lineups %}
+            <option value="{{ l.id }}" {% if active_lineup and active_lineup.id == l.id %}selected{% endif %}>{{ l.name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Player Pool -->
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-people"></i> Player Pool</div>
+            <div class="card-body" id="player-pool">
+                {% for p in players %}
+                <div class="player-chip" draggable="true" data-player-id="{{ p.id }}" data-position="{{ p.position }}">
+                    <span class="pos-badge pos-{{ p.position }}" style="width:24px;height:24px;line-height:24px;font-size:0.65rem;">{{ p.position }}</span>
+                    {% if p.jersey_number %}#{{ p.jersey_number }}{% endif %}
+                    {{ p.first_name[0] }}. {{ p.last_name }}
+                </div>
+                {% endfor %}
+                {% if not players %}
+                <p class="text-muted text-center mb-0">No active players.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Lineup Grid -->
+    <div class="col-lg-9">
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table mb-0" style="table-layout:fixed;">
+                        <thead>
+                            <tr>
+                                <th style="width:80px;"></th>
+                                {% for pos in positions %}
+                                <th class="text-center"><span class="pos-badge pos-{{ pos }}">{{ pos }}</span></th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-muted" style="font-size:0.75rem;text-transform:uppercase;">Starter</td>
+                                {% for pos in positions %}
+                                <td><div class="drop-zone" data-position="{{ pos }}" data-order="1"><span class="drop-zone-label">Drop here</span></div></td>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                <td class="text-muted" style="font-size:0.75rem;text-transform:uppercase;">Bench</td>
+                                {% for pos in positions %}
+                                <td><div class="drop-zone" data-position="{{ pos }}" data-order="2"><span class="drop-zone-label">Drop here</span></div></td>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                <td class="text-muted" style="font-size:0.75rem;text-transform:uppercase;">DNP</td>
+                                {% for pos in positions %}
+                                <td><div class="drop-zone" data-position="{{ pos }}" data-order="3"><span class="drop-zone-label">Drop here</span></div></td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lineup Stats -->
+        <div class="card mb-3" id="lineup-stats-card">
+            <div class="card-header"><i class="bi bi-graph-up"></i> Starting Lineup Stats</div>
+            <div class="card-body">
+                <div class="row text-center" id="lineup-stats">
+                    <div class="col"><div class="stat-value" style="font-size:1.3rem;" id="ls-ppg">—</div><div class="stat-label">PPG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.3rem;" id="ls-rpg">—</div><div class="stat-label">RPG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.3rem;" id="ls-apg">—</div><div class="stat-label">APG</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.3rem;" id="ls-fg">—</div><div class="stat-label">FG%</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.3rem;" id="ls-3pt">—</div><div class="stat-label">3PT%</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.3rem;" id="ls-ft">—</div><div class="stat-label">FT%</div></div>
+                    <div class="col"><div class="stat-value" style="font-size:1.3rem;" id="ls-height">—</div><div class="stat-label">Avg Height</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Lineup -->
+        <div class="card">
+            <div class="card-header">Save Lineup</div>
+            <div class="card-body">
+                <form method="post" action="/depth-chart/save" id="save-lineup-form">
+                    {% if active_lineup %}
+                    <input type="hidden" name="lineup_id" value="{{ active_lineup.id }}">
+                    {% endif %}
+                    <input type="hidden" name="slot_data" id="slot-data">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Lineup Name</label>
+                            <input type="text" class="form-control" name="lineup_name" value="{{ active_lineup.name if active_lineup else '' }}" placeholder="e.g. Starting 5">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Description</label>
+                            <input type="text" class="form-control" name="lineup_description" value="{{ active_lineup.description if active_lineup else '' }}" placeholder="Optional notes">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-warning w-100"><i class="bi bi-save"></i> Save Lineup</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Saved Lineups -->
+        {% if lineups %}
+        <div class="card mt-3">
+            <div class="card-header">Saved Lineups</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
+                        <tbody>
+                            {% for l in lineups %}
+                            <tr>
+                                <td><a href="/depth-chart?lineup_id={{ l.id }}" class="text-warning text-decoration-none">{{ l.name }}</a></td>
+                                <td class="text-muted">{{ l.description or '—' }}</td>
+                                <td>
+                                    <form method="post" action="/lineups/{{ l.id }}/delete" class="delete-form d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const preloadedSlots = {{ slots|tojson }};
+
+// Drag and Drop
+document.querySelectorAll('.player-chip').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', chip.dataset.playerId);
+        e.dataTransfer.effectAllowed = 'move';
+        chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+});
+
+document.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const playerId = e.dataTransfer.getData('text/plain');
+        const chip = document.querySelector(`.player-chip[data-player-id="${playerId}"]`);
+        if (!chip) return;
+
+        // Remove existing player from this zone
+        const existing = zone.querySelector('.player-chip');
+        if (existing) document.getElementById('player-pool').appendChild(existing);
+
+        // Remove the drop label
+        const label = zone.querySelector('.drop-zone-label');
+        if (label) label.style.display = 'none';
+
+        zone.appendChild(chip);
+
+        if (zone.dataset.order === '1') updateLineupStats();
+    });
+
+    // Double-click to return to pool
+    zone.addEventListener('dblclick', () => {
+        const chip = zone.querySelector('.player-chip');
+        if (chip) {
+            document.getElementById('player-pool').appendChild(chip);
+            const label = zone.querySelector('.drop-zone-label');
+            if (label) label.style.display = '';
+            if (zone.dataset.order === '1') updateLineupStats();
+        }
+    });
+});
+
+function updateLineupStats() {
+    const starterZones = document.querySelectorAll('.drop-zone[data-order="1"]');
+    const ids = [];
+    starterZones.forEach(zone => {
+        const chip = zone.querySelector('.player-chip');
+        if (chip) ids.push(parseInt(chip.dataset.playerId));
+    });
+
+    if (ids.length === 0) {
+        ['ppg','rpg','apg','fg','3pt','ft','height'].forEach(k => {
+            document.getElementById('ls-' + k).textContent = '—';
+        });
+        return;
+    }
+
+    fetch('/api/lineup-stats', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({player_ids: ids})
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('ls-ppg').textContent = data.total_ppg;
+        document.getElementById('ls-rpg').textContent = data.total_rpg;
+        document.getElementById('ls-apg').textContent = data.total_apg;
+        document.getElementById('ls-fg').textContent = data.avg_fg_pct + '%';
+        document.getElementById('ls-3pt').textContent = data.avg_three_pct + '%';
+        document.getElementById('ls-ft').textContent = data.avg_ft_pct + '%';
+        document.getElementById('ls-height').textContent = data.avg_height;
+    });
+}
+
+// Collect slot data before save
+document.getElementById('save-lineup-form').addEventListener('submit', () => {
+    const entries = [];
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+        const chip = zone.querySelector('.player-chip');
+        if (chip) {
+            entries.push({
+                player_id: parseInt(chip.dataset.playerId),
+                position: zone.dataset.position,
+                order: parseInt(zone.dataset.order)
+            });
+        }
+    });
+    document.getElementById('slot-data').value = JSON.stringify(entries);
+});
+
+// Preload slots from saved lineup
+if (preloadedSlots.length > 0) {
+    preloadedSlots.forEach(slot => {
+        const chip = document.querySelector(`.player-chip[data-player-id="${slot.player_id}"]`);
+        const zone = document.querySelector(`.drop-zone[data-position="${slot.slot_position}"][data-order="${slot.slot_order}"]`);
+        if (chip && zone) {
+            const label = zone.querySelector('.drop-zone-label');
+            if (label) label.style.display = 'none';
+            zone.appendChild(chip);
+        }
+    });
+    updateLineupStats();
+}
+</script>
+{% endblock %}

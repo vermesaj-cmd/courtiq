@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Goals — {{ player.first_name }} {{ player.last_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-bullseye"></i> Development Goals &mdash; {{ player.first_name }} {{ player.last_name }}
+    </h3>
+    <a href="/players/{{ player.id }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<!-- Add Goal -->
+<div class="card mb-4">
+    <div class="card-header">Add New Goal</div>
+    <div class="card-body">
+        <form method="post" action="/players/{{ player.id }}/goals">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" name="category" required>
+                        {% for cat in goal_categories %}
+                        <option value="{{ cat }}">{{ cat|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Description *</label>
+                    <input type="text" class="form-control" name="description" required placeholder="e.g. Improve free throw percentage">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Target</label>
+                    <input type="number" class="form-control" name="target_value" step="0.1">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Current</label>
+                    <input type="number" class="form-control" name="current_value" step="0.1" value="0">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Unit</label>
+                    <input type="text" class="form-control" name="unit" placeholder="%" maxlength="20">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Deadline</label>
+                    <input type="date" class="form-control" name="deadline">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-warning w-100"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Current Goals -->
+{% if goals %}
+<div class="row g-3">
+    {% for g in goals %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="cat-badge cat-{{ g.category }}">{{ g.category }}</span>
+                        {% if g.status == 'achieved' %}
+                        <span class="badge bg-success ms-1">Achieved</span>
+                        {% elif g.status == 'behind' %}
+                        <span class="badge bg-danger ms-1">Behind</span>
+                        {% else %}
+                        <span class="badge bg-info ms-1">In Progress</span>
+                        {% endif %}
+                    </div>
+                    <form method="post" action="/goals/{{ g.id }}/delete" class="delete-form">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                </div>
+                <p class="mb-2 fw-semibold">{{ g.description }}</p>
+
+                {% if g.target_value %}
+                {% set pct = ((g.current_value or 0) / g.target_value * 100)|round(0)|int %}
+                {% set pct = [pct, 100]|min %}
+                <div class="progress mb-1" style="height: 10px;">
+                    <div class="progress-bar" style="width: {{ pct }}%;"></div>
+                </div>
+                <div class="d-flex justify-content-between" style="font-size:0.8rem;">
+                    <span>{{ g.current_value or 0 }} / {{ g.target_value }} {{ g.unit }}</span>
+                    <span>{{ pct }}%</span>
+                </div>
+                {% endif %}
+
+                {% if g.deadline %}
+                <small class="text-muted d-block mt-1"><i class="bi bi-calendar"></i> Deadline: {{ g.deadline }}</small>
+                {% endif %}
+
+                <!-- Quick update -->
+                <form method="post" action="/goals/{{ g.id }}/update" class="mt-2">
+                    <div class="row g-1 align-items-end">
+                        <div class="col-4">
+                            <input type="number" class="form-control form-control-sm" name="current_value" value="{{ g.current_value or 0 }}" step="0.1">
+                        </div>
+                        <div class="col-4">
+                            <select class="form-select form-select-sm" name="status">
+                                <option value="in_progress" {% if g.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                <option value="achieved" {% if g.status == 'achieved' %}selected{% endif %}>Achieved</option>
+                                <option value="behind" {% if g.status == 'behind' %}selected{% endif %}>Behind</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <button type="submit" class="btn btn-sm btn-outline-warning w-100">Update</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-bullseye" style="font-size:2rem;"></i>
+    <p class="mt-2">No goals set yet. Add one above.</p>
+</div>
+{% endif %}
+{% endblock %}

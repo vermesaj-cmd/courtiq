@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Compare Players — CourtIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0"><i class="bi bi-people"></i> Compare Players</h3>
+</div>
+
+<!-- Player Selector -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="/compare" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Player 1</label>
+                <select class="form-select" name="ids">
+                    <option value="">Select player...</option>
+                    {% for p in all_players %}
+                    <option value="{{ p.id }}" {% if p.id|string in selected_ids %}selected{% endif %}>
+                        {{ p.first_name }} {{ p.last_name }} ({{ p.position }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Player 2</label>
+                <select class="form-select" name="ids">
+                    <option value="">Select player...</option>
+                    {% for p in all_players %}
+                    <option value="{{ p.id }}" {% if selected_ids|length > 1 and p.id|string == selected_ids[1] %}selected{% endif %}>
+                        {{ p.first_name }} {{ p.last_name }} ({{ p.position }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Player 3 <small class="text-muted">(optional)</small></label>
+                <select class="form-select" name="ids">
+                    <option value="">None</option>
+                    {% for p in all_players %}
+                    <option value="{{ p.id }}" {% if selected_ids|length > 2 and p.id|string == selected_ids[2] %}selected{% endif %}>
+                        {{ p.first_name }} {{ p.last_name }} ({{ p.position }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-warning w-100"><i class="bi bi-arrow-repeat"></i> Compare</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if players|length >= 2 %}
+<!-- Comparison Table -->
+<div class="card mb-4">
+    <div class="card-header">Player Info</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:160px;"></th>
+                        {% for p in players %}
+                        <th class="text-center">
+                            <a href="/players/{{ p.player.id }}" class="text-warning text-decoration-none">
+                                <span class="pos-badge pos-{{ p.player.position }}">{{ p.player.position }}</span>
+                                {% if p.player.jersey_number %}#{{ p.player.jersey_number }}{% endif %}
+                                {{ p.player.first_name }} {{ p.player.last_name }}
+                            </a>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td class="text-muted">Height</td>{% for p in players %}<td class="text-center">{{ height_to_display(p.player.height_inches) }}</td>{% endfor %}</tr>
+                    <tr><td class="text-muted">Weight</td>{% for p in players %}<td class="text-center">{{ p.player.weight or '—' }}{% if p.player.weight %} lbs{% endif %}</td>{% endfor %}</tr>
+                    <tr><td class="text-muted">Class</td>{% for p in players %}<td class="text-center">{{ p.player.grad_year }}</td>{% endfor %}</tr>
+                    <tr><td class="text-muted">Status</td>{% for p in players %}<td class="text-center"><span class="status-badge status-{{ p.player.status }}">{{ p.player.status|capitalize }}</span></td>{% endfor %}</tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Season Averages -->
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-bar-chart"></i> Season Averages</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:160px;"></th>
+                        {% for p in players %}
+                        <th class="text-center">{{ p.player.first_name[0] }}. {{ p.player.last_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set stats = [('GP', 'games_played'), ('MPG', 'mpg'), ('PPG', 'ppg'), ('RPG', 'rpg'), ('APG', 'apg'), ('SPG', 'spg'), ('BPG', 'bpg'), ('FG%', 'fg_pct'), ('3PT%', 'three_pct'), ('FT%', 'ft_pct'), ('TOPG', 'topg')] %}
+                    {% for label, key in stats %}
+                    <tr>
+                        <td class="text-muted">{{ label }}</td>
+                        {% for p in players %}
+                        {% set sa = p.season_averages[0] if p.season_averages else None %}
+                        {% set val = sa[key] if sa else 0 %}
+                        {% set vals = [] %}
+                        {% for p2 in players %}
+                        {% set sa2 = p2.season_averages[0] if p2.season_averages else None %}
+                        {% if sa2 %}{% if vals.append(sa2[key] or 0) %}{% endif %}{% else %}{% if vals.append(0) %}{% endif %}{% endif %}
+                        {% endfor %}
+                        {% set is_best = (val and val == vals|max and vals|max > 0) %}
+                        {% set is_pct = key in ['fg_pct', 'three_pct', 'ft_pct'] %}
+                        <td class="text-center {% if is_best and key != 'topg' %}text-warning fw-bold{% endif %}{% if key == 'topg' and val and val == vals|min and vals|min > 0 %} text-warning fw-bold{% endif %}">
+                            {{ val or 0 }}{% if is_pct %}%{% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Coach Evaluations -->
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-clipboard-check"></i> Coach Evaluation Averages</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:160px;"></th>
+                        {% for p in players %}
+                        <th class="text-center">{{ p.player.first_name[0] }}. {{ p.player.last_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-secondary"><td colspan="{{ players|length + 1 }}" class="fw-bold" style="font-size:0.8rem;text-transform:uppercase;">Athleticism</td></tr>
+                    {% for field in ['speed', 'vertical', 'agility', 'strength', 'endurance'] %}
+                    <tr>
+                        <td class="text-muted">{{ field|replace('_', ' ')|title }}</td>
+                        {% for p in players %}
+                        {% set val = p.eval_data.averages[field] if p.eval_data.averages else None %}
+                        <td class="text-center">
+                            {% if val %}<span class="{% if val >= 8 %}text-success{% elif val >= 5 %}text-warning{% else %}text-danger{% endif %}">{{ val }}</span>{% else %}—{% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+
+                    <tr class="table-secondary"><td colspan="{{ players|length + 1 }}" class="fw-bold" style="font-size:0.8rem;text-transform:uppercase;">Skills</td></tr>
+                    {% for field in ['ball_handling', 'passing', 'shooting_form', 'post_moves', 'off_ball_movement', 'transition_play'] %}
+                    <tr>
+                        <td class="text-muted">{{ field|replace('_', ' ')|title }}</td>
+                        {% for p in players %}
+                        {% set val = p.eval_data.averages[field] if p.eval_data.averages else None %}
+                        <td class="text-center">
+                            {% if val %}<span class="{% if val >= 8 %}text-success{% elif val >= 5 %}text-warning{% else %}text-danger{% endif %}">{{ val }}</span>{% else %}—{% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+
+                    <tr class="table-secondary"><td colspan="{{ players|length + 1 }}" class="fw-bold" style="font-size:0.8rem;text-transform:uppercase;">Intangibles</td></tr>
+                    {% for field in ['basketball_iq', 'motor', 'coachability', 'leadership', 'clutch', 'defensive_instincts'] %}
+                    <tr>
+                        <td class="text-muted">{{ field|replace('_', ' ')|title }}</td>
+                        {% for p in players %}
+                        {% set val = p.eval_data.averages[field] if p.eval_data.averages else None %}
+                        <td class="text-center">
+                            {% if val %}<span class="{% if val >= 8 %}text-success{% elif val >= 5 %}text-warning{% else %}text-danger{% endif %}">{{ val }}</span>{% else %}—{% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif players|length == 1 %}
+<div class="text-center text-muted py-5">
+    <p>Select at least two players to compare.</p>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-people" style="font-size:2rem;"></i>
+    <p class="mt-2">Select two or more players above to compare them side by side.</p>
+</div>
+{% endif %}
+{% endblock %}

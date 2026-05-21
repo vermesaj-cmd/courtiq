@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Evaluate {{ data.player.first_name }} {{ data.player.last_name }} — CourtIQ{% endblock %}
+
+{% set p = data.player %}
+
+{% block content %}
+<h3 class="fw-bold mb-3">
+    <span class="pos-badge pos-{{ p.position }} me-2">{{ p.position }}</span>
+    Evaluate {{ p.first_name }} {{ p.last_name }}
+</h3>
+
+<form method="post" action="/players/{{ p.id }}/evaluate">
+    <!-- Coach Info -->
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-person-badge"></i> Coach Info</div>
+        <div class="card-body">
+            <div class="col-md-4">
+                <label class="form-label">Coach Name *</label>
+                <input type="text" class="form-control" name="coach_name" required placeholder="Your name">
+            </div>
+        </div>
+    </div>
+
+    <!-- Athleticism -->
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-lightning"></i> Athleticism</div>
+        <div class="card-body">
+            {% set ath_fields = [
+                ('speed', 'Speed', 'Quickness in open court, lateral speed, first step'),
+                ('vertical', 'Vertical', 'Leaping ability, ability to play above the rim'),
+                ('agility', 'Agility', 'Change of direction, footwork, body control'),
+                ('strength', 'Strength', 'Upper and lower body strength, ability to absorb contact'),
+                ('endurance', 'Endurance', 'Conditioning, ability to maintain effort all game')
+            ] %}
+            <div class="row g-4">
+                {% for field, label, hint in ath_fields %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ label }}: <span id="{{ field }}_val" class="text-warning fw-bold">5</span>/10</label>
+                    <input type="range" class="form-range" id="{{ field }}" name="{{ field }}" min="1" max="10" value="5">
+                    <div class="rating-label"><span>Poor</span><span>Elite</span></div>
+                    <small class="text-muted">{{ hint }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-trophy"></i> Skills</div>
+        <div class="card-body">
+            {% set skill_fields = [
+                ('ball_handling', 'Ball Handling', 'Dribble moves, handle under pressure, between-the-legs'),
+                ('passing', 'Passing', 'Vision, accuracy, skip passes, entry passes'),
+                ('shooting_form', 'Shooting Form', 'Mechanics, release point, consistency'),
+                ('post_moves', 'Post Moves', 'Footwork, drop step, hook shot, face-up game'),
+                ('off_ball_movement', 'Off-Ball Movement', 'Cutting, screening, spacing awareness'),
+                ('transition_play', 'Transition Play', 'Running the floor, fast break decisions')
+            ] %}
+            <div class="row g-4">
+                {% for field, label, hint in skill_fields %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ label }}: <span id="{{ field }}_val" class="text-warning fw-bold">5</span>/10</label>
+                    <input type="range" class="form-range" id="{{ field }}" name="{{ field }}" min="1" max="10" value="5">
+                    <div class="rating-label"><span>Poor</span><span>Elite</span></div>
+                    <small class="text-muted">{{ hint }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Intangibles -->
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-lightbulb"></i> Intangibles</div>
+        <div class="card-body">
+            {% set intang_fields = [
+                ('basketball_iq', 'Basketball IQ', 'Court vision, decision-making, reads'),
+                ('motor', 'Motor', 'Effort level, hustle, energy'),
+                ('coachability', 'Coachability', 'Responsiveness to coaching, willingness to learn'),
+                ('leadership', 'Leadership', 'Vocal leader, leads by example, teammates respond'),
+                ('clutch', 'Clutch', 'Performs well under pressure in big moments'),
+                ('defensive_instincts', 'Defensive Instincts', 'Anticipation, positioning, help defense IQ')
+            ] %}
+            <div class="row g-4">
+                {% for field, label, hint in intang_fields %}
+                <div class="col-md-6">
+                    <label class="form-label">{{ label }}: <span id="{{ field }}_val" class="text-warning fw-bold">5</span>/10</label>
+                    <input type="range" class="form-range" id="{{ field }}" name="{{ field }}" min="1" max="10" value="5">
+                    <div class="rating-label"><span>Poor</span><span>Elite</span></div>
+                    <small class="text-muted">{{ hint }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-chat-text"></i> Notes</div>
+        <div class="card-body">
+            <textarea class="form-control" name="notes" rows="4" placeholder="Evaluation notes, observations, areas to improve..."></textarea>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-warning"><i class="bi bi-check-lg"></i> Submit Evaluation</button>
+        <a href="/players/{{ p.id }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}CourtIQ — {{ team_config.team_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0" style="color: var(--hs-orange);">{{ team_config.team_name }}</h2>
+        <span class="text-muted">{{ team_config.season }} Season{% if team_config.coach_name %} &middot; Coach {{ team_config.coach_name }}{% endif %}</span>
+    </div>
+    <a href="/players/add" class="btn btn-warning"><i class="bi bi-person-plus"></i> Add Player</a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+        <div class="stat-card">
+            <div class="stat-value">{{ total }}</div>
+            <div class="stat-label">Total Players</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-card">
+            <div class="stat-value">{{ active }}</div>
+            <div class="stat-label">Active</div>
+        </div>
+    </div>
+    {% for p in by_position %}
+    <div class="col-6 col-md-2">
+        <div class="stat-card">
+            <div class="stat-value"><span class="pos-badge pos-{{ p.position }}">{{ p.position }}</span> {{ p.cnt }}</div>
+            <div class="stat-label">{{ p.position }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Team Averages -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-bar-chart"></i> Team Averages</div>
+            <div class="card-body">
+                {% if team_avgs and team_avgs.ppg %}
+                <div class="row text-center">
+                    <div class="col-4 mb-3">
+                        <div class="stat-value" style="font-size:1.4rem;">{{ team_avgs.ppg or '—' }}</div>
+                        <div class="stat-label">PPG</div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="stat-value" style="font-size:1.4rem;">{{ team_avgs.rpg or '—' }}</div>
+                        <div class="stat-label">RPG</div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="stat-value" style="font-size:1.4rem;">{{ team_avgs.apg or '—' }}</div>
+                        <div class="stat-label">APG</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-value" style="font-size:1.4rem;">{{ team_avgs.fg_pct or '—' }}%</div>
+                        <div class="stat-label">FG%</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-value" style="font-size:1.4rem;">{{ team_avgs.three_pct or '—' }}%</div>
+                        <div class="stat-label">3P%</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-value" style="font-size:1.4rem;">{{ team_avgs.ft_pct or '—' }}%</div>
+                        <div class="stat-label">FT%</div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">Add players with stats to see team averages.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Evaluations -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-clipboard-check"></i> Recent Evaluations</div>
+            <div class="card-body">
+                {% if recent_evals %}
+                {% for ev in recent_evals %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <a href="/players/{{ ev.player_id }}" class="text-decoration-none text-light">{{ ev.first_name }} {{ ev.last_name }}</a>
+                    <small class="text-muted">{{ ev.coach_name }} &middot; {{ ev.eval_date }}</small>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted text-center mb-0">No evaluations yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Goal Progress -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-bullseye"></i> Goal Progress</div>
+            <div class="card-body">
+                {% if goal_counts %}
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="stat-value" style="font-size:1.4rem; color: #4fc3f7;">{{ goal_counts.get('in_progress', 0) }}</div>
+                        <div class="stat-label">In Progress</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-value" style="font-size:1.4rem; color: #4caf50;">{{ goal_counts.get('achieved', 0) }}</div>
+                        <div class="stat-label">Achieved</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-value" style="font-size:1.4rem; color: #ef5350;">{{ goal_counts.get('behind', 0) }}</div>
+                        <div class="stat-label">Behind</div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">No goals set yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Roster Table -->
+{% if roster %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people"></i> Active Roster</span>
+        <a href="/players" class="btn btn-sm btn-outline-warning">View All</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>Player</th><th>Pos</th><th>#</th><th>Height</th><th>Class</th><th>PPG</th><th>RPG</th><th>APG</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in roster %}
+                    <tr onclick="location.href='/players/{{ p.id }}'" style="cursor:pointer">
+                        <td class="fw-semibold">{{ p.first_name }} {{ p.last_name }}</td>
+                        <td><span class="pos-badge pos-{{ p.position }}">{{ p.position }}</span></td>
+                        <td>{{ p.jersey_number or '—' }}</td>
+                        <td>{{ height_to_display(p.height_inches) }}</td>
+                        <td>{{ p.grad_year }}</td>
+                        <td>{{ p.ppg or '0.0' }}</td>
+                        <td>{{ p.rpg or '0.0' }}</td>
+                        <td>{{ p.apg or '0.0' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

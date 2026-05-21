@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Conditioning — {{ player.first_name }} {{ player.last_name }}{% endblock %}
+
+{% block content %}
+<h3 class="fw-bold mb-3">
+    <i class="bi bi-heart-pulse"></i> Log Conditioning Benchmark &mdash; {{ player.first_name }} {{ player.last_name }}
+</h3>
+
+<form method="post" action="/players/{{ player.id }}/conditioning">
+    <div class="card mb-4">
+        <div class="card-header">Benchmark Data</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Date *</label>
+                    <input type="date" class="form-control" name="log_date" required>
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-2">
+                    <label class="form-label">Mile Time (sec)</label>
+                    <input type="number" class="form-control" name="mile_time_sec" step="1" min="0" placeholder="e.g. 420">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Shuttle Run (sec)</label>
+                    <input type="number" class="form-control" name="shuttle_sec" step="0.01" min="0" placeholder="e.g. 11.5">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Vertical Leap (in)</label>
+                    <input type="number" class="form-control" name="vertical_inches" step="0.5" min="0" placeholder="e.g. 28">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Broad Jump (in)</label>
+                    <input type="number" class="form-control" name="broad_jump_inches" step="0.5" min="0" placeholder="e.g. 96">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Bench Reps</label>
+                    <input type="number" class="form-control" name="bench_reps" min="0" placeholder="e.g. 10">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Body Weight (lbs)</label>
+                    <input type="number" class="form-control" name="body_weight" step="0.1" min="0" placeholder="e.g. 185">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-warning"><i class="bi bi-check-lg"></i> Log Benchmark</button>
+        <a href="/players/{{ player.id }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
