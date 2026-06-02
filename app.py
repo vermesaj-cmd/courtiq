@@ -21,13 +21,23 @@ login_manager.login_view = "login"
 login_manager.login_message = "Please log in to access CourtIQ."
 login_manager.login_message_category = "warning"
 
+import sys
+print(f"Starting CourtIQ... DATABASE_URL set: {bool(os.environ.get('DATABASE_URL'))}", flush=True)
+print(f"PORT: {os.environ.get('PORT', 'not set')}", flush=True)
+
 try:
     init_db()
+    print("Tables created.", flush=True)
     seed_players()
+    print("Players seeded.", flush=True)
     seed_default_user()
+    print("Default user created.", flush=True)
     print("Database initialized successfully.", flush=True)
 except Exception as e:
+    import traceback
     print(f"DATABASE INIT ERROR: {e}", flush=True)
+    traceback.print_exc()
+    print("App will start without database.", flush=True)
 
 
 class User(UserMixin):

@@ -2,5 +2,8 @@
 MISE_PYTHON_GITHUB_ATTESTATIONS = "false"
 PYTHON_VERSION = "3.12"
 
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
 [start]
 cmd = "gunicorn app:app --config gunicorn_config.py"
