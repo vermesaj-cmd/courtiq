@@ -22,8 +22,14 @@ login_manager.login_message = "Please log in to access CourtIQ."
 login_manager.login_message_category = "warning"
 
 import sys
-print(f"Starting CourtIQ... DATABASE_URL set: {bool(os.environ.get('DATABASE_URL'))}", flush=True)
-print(f"PORT: {os.environ.get('PORT', 'not set')}", flush=True)
+_db_url = os.environ.get("DATABASE_URL", "")
+print("=" * 60, flush=True)
+print("  CourtIQ Starting", flush=True)
+print(f"  DATABASE_URL: {'SET (' + _db_url[:30] + '...)' if _db_url else '*** NOT SET — USING SQLITE ***'}", flush=True)
+print(f"  PORT: {os.environ.get('PORT', 'not set')}", flush=True)
+print("=" * 60, flush=True)
+if not _db_url:
+    print("WARNING: No DATABASE_URL. Data will NOT persist across restarts!", flush=True)
 
 try:
     init_db()
@@ -90,6 +96,11 @@ def health():
     except Exception as e:
         info["db_error"] = str(e)
     return jsonify(info)
+
+
+@app.context_processor
+def inject_db_info():
+    return {"using_sqlite": not DATABASE_URL}
 
 
 @app.before_request

@@ -57,6 +57,15 @@
     </nav>
 
     <main class="container-fluid py-4">
+        {% if using_sqlite %}
+        <div class="alert alert-danger d-flex align-items-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2" style="font-size:1.2rem;"></i>
+            <div>
+                <strong>Data will NOT persist!</strong> No PostgreSQL database is connected &mdash; using temporary SQLite storage.
+                All data is lost when the server restarts. Add a PostgreSQL database in your Railway dashboard and set the <code>DATABASE_URL</code> environment variable.
+            </div>
+        </div>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
