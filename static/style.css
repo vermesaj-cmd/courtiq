@@ -243,6 +243,13 @@ body {
     min-width: 200px;
 }
 
+/* Lineup shot chart zones */
+.lc-zone {
+    stroke: #30363d;
+    stroke-width: 1;
+    transition: opacity 0.3s;
+}
+
 /* Depth chart */
 .player-chip {
     display: inline-flex;

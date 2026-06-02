@@ -797,6 +797,41 @@ def api_lineup_stats():
     return jsonify(result)
 
 
+@app.route("/api/lineup-shotchart", methods=["POST"])
+def api_lineup_shotchart():
+    data = request.get_json()
+    player_ids = data.get("player_ids", [])
+    if not player_ids:
+        return jsonify({"zones": []})
+
+    config = get_team_config()
+    conn = get_db()
+
+    # Aggregate shot chart data across all players
+    zones = []
+    for zone_id in range(1, 12):
+        total_made = 0
+        total_att = 0
+        for pid in player_ids:
+            row = conn.execute(
+                "SELECT fg_made, fg_attempted FROM shot_charts WHERE player_id = ? AND season = ? AND zone_id = ?",
+                (int(pid), config["season"], zone_id),
+            ).fetchone()
+            if row:
+                total_made += row["fg_made"] or 0
+                total_att += row["fg_attempted"] or 0
+        zones.append({
+            "zone_id": zone_id,
+            "zone_name": ZONE_NAMES.get(zone_id, ""),
+            "fg_made": total_made,
+            "fg_attempted": total_att,
+            "fg_pct": round(total_made / total_att * 100, 1) if total_att > 0 else None,
+        })
+
+    conn.close()
+    return jsonify({"zones": zones})
+
+
 @app.route("/api/lineup/<int:lineup_id>")
 def api_lineup_detail(lineup_id):
     conn = get_db()

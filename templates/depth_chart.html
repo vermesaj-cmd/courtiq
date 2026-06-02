@@ -91,6 +91,112 @@
             </div>
         </div>
 
+        <!-- Lineup Shot Chart -->
+        <div class="card mb-3" id="lineup-shotchart-card">
+            <div class="card-header"><i class="bi bi-grid-3x3"></i> Lineup Shot Chart</div>
+            <div class="card-body text-center" style="background: #0d1117; border-radius: 0 0 10px 10px;">
+                <div id="shotchart-empty" class="py-4 text-muted">
+                    <i class="bi bi-crosshair" style="font-size:2rem;"></i>
+                    <p class="mb-0 mt-2">Drag players to starter slots to see the combined shot chart</p>
+                </div>
+                <svg id="lineup-court" viewBox="0 0 500 470" style="max-width:480px; width:100%; margin:0 auto; display:none;">
+                    <defs>
+                        <radialGradient id="lcGlow" cx="50%" cy="90%" r="60%">
+                            <stop offset="0%" stop-color="#1a1f2e"/>
+                            <stop offset="100%" stop-color="#0d1117"/>
+                        </radialGradient>
+                        <radialGradient id="lcHot" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(76,175,80,0.75)"/>
+                            <stop offset="100%" stop-color="rgba(56,142,60,0.45)"/>
+                        </radialGradient>
+                        <radialGradient id="lcAvg" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(255,193,7,0.7)"/>
+                            <stop offset="100%" stop-color="rgba(245,127,23,0.4)"/>
+                        </radialGradient>
+                        <radialGradient id="lcCold" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(239,83,80,0.7)"/>
+                            <stop offset="100%" stop-color="rgba(198,40,40,0.4)"/>
+                        </radialGradient>
+                    </defs>
+
+                    <rect x="0" y="0" width="500" height="470" fill="url(#lcGlow)" rx="4"/>
+
+                    <!-- Zones -->
+                    <path class="lc-zone" data-z="10" d="M 30,160 L 470,160 L 470,0 L 0,0 L 0,160 Z" fill="#161b22"/>
+                    <polygon class="lc-zone" data-z="9" points="0,160 30,160 30,310 0,310" fill="#161b22"/>
+                    <polygon class="lc-zone" data-z="11" points="500,160 470,160 470,310 500,310" fill="#161b22"/>
+                    <rect class="lc-zone" data-z="7" x="0" y="310" width="30" height="160" fill="#161b22"/>
+                    <rect class="lc-zone" data-z="8" x="470" y="310" width="30" height="160" fill="#161b22"/>
+                    <polygon class="lc-zone" data-z="5" points="30,310 170,280 170,160 30,160" fill="#161b22"/>
+                    <polygon class="lc-zone" data-z="6" points="470,310 330,280 330,160 470,160" fill="#161b22"/>
+                    <polygon class="lc-zone" data-z="3" points="30,470 170,470 170,280 30,310" fill="#161b22"/>
+                    <polygon class="lc-zone" data-z="4" points="470,470 330,470 330,280 470,310" fill="#161b22"/>
+                    <path class="lc-zone" data-z="2" d="M 170,280 L 330,280 L 330,470 L 170,470 Z" fill="#161b22"/>
+                    <circle class="lc-zone" data-z="1" cx="250" cy="418" r="38" fill="#161b22"/>
+
+                    <!-- Court lines -->
+                    <rect x="0" y="0" width="500" height="470" fill="none" stroke="#30363d" stroke-width="2.5" rx="4"/>
+                    <path d="M 30,470 L 30,310 Q 30,145 250,125 Q 470,145 470,310 L 470,470" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+                    <rect x="170" y="280" width="160" height="190" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                    <circle cx="250" cy="280" r="60" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="6,4"/>
+                    <line x1="218" y1="435" x2="282" y2="435" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
+                    <circle cx="250" cy="424" r="9" fill="none" stroke="#ff8c00" stroke-width="2.5"/>
+                    <line x1="244" y1="432" x2="241" y2="445" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <line x1="250" y1="433" x2="250" y2="447" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <line x1="256" y1="432" x2="259" y2="445" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <path d="M 234,440 Q 234,400 250,395 Q 266,400 266,440" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+
+                    <!-- FG% labels -->
+                    <text class="zone-pct" data-lc-pct="1" x="250" y="410">—</text>
+                    <text class="zone-pct" data-lc-pct="2" x="250" y="340">—</text>
+                    <text class="zone-pct" data-lc-pct="3" x="100" y="385">—</text>
+                    <text class="zone-pct" data-lc-pct="4" x="400" y="385">—</text>
+                    <text class="zone-pct" data-lc-pct="5" x="100" y="235">—</text>
+                    <text class="zone-pct" data-lc-pct="6" x="400" y="235">—</text>
+                    <text class="zone-pct" data-lc-pct="7" x="15" y="385">—</text>
+                    <text class="zone-pct" data-lc-pct="8" x="485" y="385">—</text>
+                    <text class="zone-pct" data-lc-pct="9" x="15" y="235">—</text>
+                    <text class="zone-pct" data-lc-pct="10" x="250" y="75">—</text>
+                    <text class="zone-pct" data-lc-pct="11" x="485" y="235">—</text>
+
+                    <!-- Made/Attempted -->
+                    <text class="zone-detail" data-lc-det="1" x="250" y="425"></text>
+                    <text class="zone-detail" data-lc-det="2" x="250" y="355"></text>
+                    <text class="zone-detail" data-lc-det="3" x="100" y="400"></text>
+                    <text class="zone-detail" data-lc-det="4" x="400" y="400"></text>
+                    <text class="zone-detail" data-lc-det="5" x="100" y="250"></text>
+                    <text class="zone-detail" data-lc-det="6" x="400" y="250"></text>
+                    <text class="zone-detail" data-lc-det="7" x="15" y="400"></text>
+                    <text class="zone-detail" data-lc-det="8" x="485" y="400"></text>
+                    <text class="zone-detail" data-lc-det="9" x="15" y="250"></text>
+                    <text class="zone-detail" data-lc-det="10" x="250" y="90"></text>
+                    <text class="zone-detail" data-lc-det="11" x="485" y="250"></text>
+
+                    <!-- Zone names -->
+                    <text class="zone-name" data-lc-name="1" x="250" y="397">RIM</text>
+                    <text class="zone-name" data-lc-name="2" x="250" y="325">PAINT</text>
+                    <text class="zone-name" data-lc-name="3" x="100" y="370">L MID</text>
+                    <text class="zone-name" data-lc-name="4" x="400" y="370">R MID</text>
+                    <text class="zone-name" data-lc-name="5" x="100" y="220">L ELBOW</text>
+                    <text class="zone-name" data-lc-name="6" x="400" y="220">R ELBOW</text>
+                    <text class="zone-name" data-lc-name="7" x="15" y="370">LC3</text>
+                    <text class="zone-name" data-lc-name="8" x="485" y="370">RC3</text>
+                    <text class="zone-name" data-lc-name="9" x="15" y="220">LW3</text>
+                    <text class="zone-name" data-lc-name="10" x="250" y="60">TOP 3</text>
+                    <text class="zone-name" data-lc-name="11" x="485" y="220">RW3</text>
+                </svg>
+                <!-- Legend -->
+                <div id="shotchart-legend" class="d-none mt-2">
+                    <div class="d-flex justify-content-center gap-4 flex-wrap" style="font-size:0.75rem;">
+                        <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(76,175,80,0.75), rgba(56,142,60,0.5));"></span> Hot (&ge;45%)</span>
+                        <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(255,193,7,0.7), rgba(245,127,23,0.45));"></span> Avg (30–45%)</span>
+                        <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(239,83,80,0.7), rgba(198,40,40,0.45));"></span> Cold (&lt;30%)</span>
+                        <span><span class="legend-swatch" style="background:#161b22; border:1px solid #30363d;"></span> No Data</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Save Lineup -->
         <div class="card">
             <div class="card-header">Save Lineup</div>
@@ -200,18 +306,24 @@ document.querySelectorAll('.drop-zone').forEach(zone => {
     });
 });
 
-function updateLineupStats() {
+function getStarterIds() {
     const starterZones = document.querySelectorAll('.drop-zone[data-order="1"]');
     const ids = [];
     starterZones.forEach(zone => {
         const chip = zone.querySelector('.player-chip');
         if (chip) ids.push(parseInt(chip.dataset.playerId));
     });
+    return ids;
+}
+
+function updateLineupStats() {
+    const ids = getStarterIds();
 
     if (ids.length === 0) {
         ['ppg','rpg','apg','fg','3pt','ft','height'].forEach(k => {
             document.getElementById('ls-' + k).textContent = '—';
         });
+        updateLineupShotChart([]);
         return;
     }
 
@@ -229,6 +341,65 @@ function updateLineupStats() {
         document.getElementById('ls-3pt').textContent = data.avg_three_pct + '%';
         document.getElementById('ls-ft').textContent = data.avg_ft_pct + '%';
         document.getElementById('ls-height').textContent = data.avg_height;
+    });
+
+    updateLineupShotChart(ids);
+}
+
+function updateLineupShotChart(ids) {
+    const svg = document.getElementById('lineup-court');
+    const empty = document.getElementById('shotchart-empty');
+    const legend = document.getElementById('shotchart-legend');
+
+    if (ids.length === 0) {
+        svg.style.display = 'none';
+        legend.classList.add('d-none');
+        empty.style.display = '';
+        // Reset all zones
+        for (let z = 1; z <= 11; z++) {
+            const el = document.querySelector(`.lc-zone[data-z="${z}"]`);
+            if (el) el.setAttribute('fill', '#161b22');
+            const pct = document.querySelector(`[data-lc-pct="${z}"]`);
+            if (pct) pct.textContent = '—';
+            const det = document.querySelector(`[data-lc-det="${z}"]`);
+            if (det) det.textContent = '';
+        }
+        return;
+    }
+
+    svg.style.display = 'block';
+    empty.style.display = 'none';
+    legend.classList.remove('d-none');
+
+    fetch('/api/lineup-shotchart', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({player_ids: ids})
+    })
+    .then(r => r.json())
+    .then(data => {
+        data.zones.forEach(z => {
+            const el = document.querySelector(`.lc-zone[data-z="${z.zone_id}"]`);
+            const pctLabel = document.querySelector(`[data-lc-pct="${z.zone_id}"]`);
+            const detLabel = document.querySelector(`[data-lc-det="${z.zone_id}"]`);
+
+            let fill = '#161b22';
+            let pctText = '—';
+            let detText = '';
+
+            if (z.fg_attempted > 0) {
+                const pct = z.fg_pct;
+                pctText = pct.toFixed(0) + '%';
+                detText = z.fg_made + '/' + z.fg_attempted;
+                if (pct >= 45) fill = 'url(#lcHot)';
+                else if (pct >= 30) fill = 'url(#lcAvg)';
+                else fill = 'url(#lcCold)';
+            }
+
+            if (el) el.setAttribute('fill', fill);
+            if (pctLabel) pctLabel.textContent = pctText;
+            if (detLabel) detLabel.textContent = detText;
+        });
     });
 }
 
