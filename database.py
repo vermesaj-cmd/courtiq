@@ -1,198 +1,438 @@
-import sqlite3
 import os
+import re
+import sqlite3
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "courtiq.db")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+# ── Connection adapter ───────────────────────────────────────────
+# PostgreSQL in production (Render), SQLite locally.
+# The adapter translates ? params to %s so app.py queries work everywhere.
+
+if DATABASE_URL:
+    import psycopg2
+    import psycopg2.extras
+
+    # Render gives postgres:// but psycopg2 needs postgresql://
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+
+def _translate_sql(sql):
+    """Convert SQLite-style ? placeholders to PostgreSQL %s."""
+    return sql.replace("?", "%s")
+
+
+class PgCursorWrapper:
+    """Wraps a psycopg2 cursor to accept sqlite3-style ? params."""
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def execute(self, sql, params=None):
+        sql = _translate_sql(sql)
+        # Convert SQLite-specific syntax
+        sql = re.sub(r"INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", sql, flags=re.IGNORECASE)
+        if "INSERT INTO" in sql.upper() and "ON CONFLICT" not in sql.upper() and "OR IGNORE" not in sql.upper():
+            pass  # normal insert
+        self._cursor.execute(sql, params or ())
+        return self
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    @property
+    def lastrowid(self):
+        # PostgreSQL doesn't have lastrowid natively — we use RETURNING
+        row = self._cursor.fetchone()
+        return row["id"] if row else None
+
+    @property
+    def description(self):
+        return self._cursor.description
+
+
+class PgConnectionWrapper:
+    """Wraps a psycopg2 connection to behave like sqlite3 connection."""
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=None):
+        # For INSERT statements, add RETURNING id to get lastrowid
+        needs_returning = False
+        sql_upper = sql.strip().upper()
+        if sql_upper.startswith("INSERT") and "RETURNING" not in sql_upper:
+            needs_returning = True
+            sql = sql.rstrip().rstrip(";") + " RETURNING id"
+
+        sql = _translate_sql(sql)
+        sql = re.sub(r"INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", sql, flags=re.IGNORECASE)
+
+        # Handle ON CONFLICT for INSERT OR IGNORE
+        if needs_returning and "ON CONFLICT" not in sql.upper():
+            # Check if this was an INSERT OR IGNORE (now just INSERT INTO)
+            pass
+
+        cursor = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute(sql, params or ())
+        except psycopg2.errors.UniqueViolation:
+            self._conn.rollback()
+            return PgCursorWrapper(cursor)
+        return PgCursorWrapper(cursor)
+
+    def cursor(self):
+        return PgCursorWrapper(self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor))
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+    def rollback(self):
+        self._conn.rollback()
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL)
+        return PgConnectionWrapper(conn)
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
+
+# ── Schema ───────────────────────────────────────────────────────
+
+SQLITE_SCHEMA = [
+    """CREATE TABLE IF NOT EXISTS team_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        team_name TEXT NOT NULL DEFAULT 'My Team',
+        season TEXT NOT NULL DEFAULT '2025-26',
+        coach_name TEXT DEFAULT '',
+        school_name TEXT DEFAULT '',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+    "INSERT OR IGNORE INTO team_config (id) VALUES (1)",
+
+    """CREATE TABLE IF NOT EXISTS players (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        position TEXT NOT NULL,
+        height_inches INTEGER NOT NULL,
+        weight INTEGER,
+        wingspan_inches INTEGER,
+        jersey_number INTEGER,
+        grad_year INTEGER NOT NULL,
+        gpa REAL,
+        status TEXT DEFAULT 'active' CHECK(status IN ('active','injured','inactive')),
+        photo_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS season_averages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        season TEXT NOT NULL,
+        games_played INTEGER DEFAULT 0,
+        mpg REAL DEFAULT 0,
+        ppg REAL DEFAULT 0,
+        rpg REAL DEFAULT 0,
+        apg REAL DEFAULT 0,
+        spg REAL DEFAULT 0,
+        bpg REAL DEFAULT 0,
+        fg_pct REAL DEFAULT 0,
+        three_pct REAL DEFAULT 0,
+        ft_pct REAL DEFAULT 0,
+        topg REAL DEFAULT 0,
+        is_manual INTEGER DEFAULT 1,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS game_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        game_date TEXT NOT NULL,
+        opponent TEXT NOT NULL,
+        result TEXT CHECK(result IN ('W','L')),
+        minutes INTEGER DEFAULT 0,
+        points INTEGER DEFAULT 0,
+        rebounds INTEGER DEFAULT 0,
+        assists INTEGER DEFAULT 0,
+        steals INTEGER DEFAULT 0,
+        blocks INTEGER DEFAULT 0,
+        fg_made INTEGER DEFAULT 0,
+        fg_attempted INTEGER DEFAULT 0,
+        three_made INTEGER DEFAULT 0,
+        three_attempted INTEGER DEFAULT 0,
+        ft_made INTEGER DEFAULT 0,
+        ft_attempted INTEGER DEFAULT 0,
+        turnovers INTEGER DEFAULT 0,
+        fouls INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS coach_evaluations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        coach_name TEXT NOT NULL,
+        eval_date TEXT DEFAULT (date('now')),
+        speed INTEGER CHECK(speed BETWEEN 1 AND 10),
+        vertical INTEGER CHECK(vertical BETWEEN 1 AND 10),
+        agility INTEGER CHECK(agility BETWEEN 1 AND 10),
+        strength INTEGER CHECK(strength BETWEEN 1 AND 10),
+        endurance INTEGER CHECK(endurance BETWEEN 1 AND 10),
+        ball_handling INTEGER CHECK(ball_handling BETWEEN 1 AND 10),
+        passing INTEGER CHECK(passing BETWEEN 1 AND 10),
+        shooting_form INTEGER CHECK(shooting_form BETWEEN 1 AND 10),
+        post_moves INTEGER CHECK(post_moves BETWEEN 1 AND 10),
+        off_ball_movement INTEGER CHECK(off_ball_movement BETWEEN 1 AND 10),
+        transition_play INTEGER CHECK(transition_play BETWEEN 1 AND 10),
+        basketball_iq INTEGER CHECK(basketball_iq BETWEEN 1 AND 10),
+        motor INTEGER CHECK(motor BETWEEN 1 AND 10),
+        coachability INTEGER CHECK(coachability BETWEEN 1 AND 10),
+        leadership INTEGER CHECK(leadership BETWEEN 1 AND 10),
+        clutch INTEGER CHECK(clutch BETWEEN 1 AND 10),
+        defensive_instincts INTEGER CHECK(defensive_instincts BETWEEN 1 AND 10),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS shot_charts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        season TEXT NOT NULL,
+        zone_id INTEGER NOT NULL CHECK(zone_id BETWEEN 1 AND 11),
+        zone_name TEXT NOT NULL,
+        fg_made INTEGER DEFAULT 0,
+        fg_attempted INTEGER DEFAULT 0,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+        UNIQUE(player_id, season, zone_id)
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS conditioning_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        log_date TEXT NOT NULL,
+        mile_time_sec REAL,
+        shuttle_sec REAL,
+        vertical_inches REAL,
+        broad_jump_inches REAL,
+        bench_reps INTEGER,
+        body_weight REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS development_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT NOT NULL,
+        target_value REAL,
+        current_value REAL DEFAULT 0,
+        unit TEXT DEFAULT '',
+        deadline TEXT,
+        status TEXT DEFAULT 'in_progress' CHECK(status IN ('in_progress','achieved','behind')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS lineups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS lineup_slots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lineup_id INTEGER NOT NULL,
+        player_id INTEGER NOT NULL,
+        slot_position TEXT NOT NULL,
+        slot_order INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (lineup_id) REFERENCES lineups(id) ON DELETE CASCADE,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+        UNIQUE(lineup_id, player_id)
+    )""",
+]
+
+PG_SCHEMA = [
+    """CREATE TABLE IF NOT EXISTS team_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        team_name TEXT NOT NULL DEFAULT 'My Team',
+        season TEXT NOT NULL DEFAULT '2025-26',
+        coach_name TEXT DEFAULT '',
+        school_name TEXT DEFAULT '',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+    "INSERT INTO team_config (id) VALUES (1) ON CONFLICT DO NOTHING",
+
+    """CREATE TABLE IF NOT EXISTS players (
+        id SERIAL PRIMARY KEY,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        position TEXT NOT NULL,
+        height_inches INTEGER NOT NULL,
+        weight INTEGER,
+        wingspan_inches INTEGER,
+        jersey_number INTEGER,
+        grad_year INTEGER NOT NULL,
+        gpa REAL,
+        status TEXT DEFAULT 'active',
+        photo_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS season_averages (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        season TEXT NOT NULL,
+        games_played INTEGER DEFAULT 0,
+        mpg REAL DEFAULT 0,
+        ppg REAL DEFAULT 0,
+        rpg REAL DEFAULT 0,
+        apg REAL DEFAULT 0,
+        spg REAL DEFAULT 0,
+        bpg REAL DEFAULT 0,
+        fg_pct REAL DEFAULT 0,
+        three_pct REAL DEFAULT 0,
+        ft_pct REAL DEFAULT 0,
+        topg REAL DEFAULT 0,
+        is_manual INTEGER DEFAULT 1
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS game_logs (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        game_date TEXT NOT NULL,
+        opponent TEXT NOT NULL,
+        result TEXT,
+        minutes INTEGER DEFAULT 0,
+        points INTEGER DEFAULT 0,
+        rebounds INTEGER DEFAULT 0,
+        assists INTEGER DEFAULT 0,
+        steals INTEGER DEFAULT 0,
+        blocks INTEGER DEFAULT 0,
+        fg_made INTEGER DEFAULT 0,
+        fg_attempted INTEGER DEFAULT 0,
+        three_made INTEGER DEFAULT 0,
+        three_attempted INTEGER DEFAULT 0,
+        ft_made INTEGER DEFAULT 0,
+        ft_attempted INTEGER DEFAULT 0,
+        turnovers INTEGER DEFAULT 0,
+        fouls INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS coach_evaluations (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        coach_name TEXT NOT NULL,
+        eval_date TEXT DEFAULT CURRENT_DATE::TEXT,
+        speed INTEGER,
+        vertical INTEGER,
+        agility INTEGER,
+        strength INTEGER,
+        endurance INTEGER,
+        ball_handling INTEGER,
+        passing INTEGER,
+        shooting_form INTEGER,
+        post_moves INTEGER,
+        off_ball_movement INTEGER,
+        transition_play INTEGER,
+        basketball_iq INTEGER,
+        motor INTEGER,
+        coachability INTEGER,
+        leadership INTEGER,
+        clutch INTEGER,
+        defensive_instincts INTEGER,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS shot_charts (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        season TEXT NOT NULL,
+        zone_id INTEGER NOT NULL,
+        zone_name TEXT NOT NULL,
+        fg_made INTEGER DEFAULT 0,
+        fg_attempted INTEGER DEFAULT 0,
+        UNIQUE(player_id, season, zone_id)
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS conditioning_logs (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        log_date TEXT NOT NULL,
+        mile_time_sec REAL,
+        shuttle_sec REAL,
+        vertical_inches REAL,
+        broad_jump_inches REAL,
+        bench_reps INTEGER,
+        body_weight REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS development_goals (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        category TEXT NOT NULL,
+        description TEXT NOT NULL,
+        target_value REAL,
+        current_value REAL DEFAULT 0,
+        unit TEXT DEFAULT '',
+        deadline TEXT,
+        status TEXT DEFAULT 'in_progress',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS lineups (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS lineup_slots (
+        id SERIAL PRIMARY KEY,
+        lineup_id INTEGER NOT NULL REFERENCES lineups(id) ON DELETE CASCADE,
+        player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        slot_position TEXT NOT NULL,
+        slot_order INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(lineup_id, player_id)
+    )""",
+]
 
 
 def init_db():
     conn = get_db()
-    c = conn.cursor()
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS team_config (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            team_name TEXT NOT NULL DEFAULT 'My Team',
-            season TEXT NOT NULL DEFAULT '2025-26',
-            coach_name TEXT DEFAULT '',
-            school_name TEXT DEFAULT '',
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    c.execute("INSERT OR IGNORE INTO team_config (id) VALUES (1)")
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS players (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            first_name TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            position TEXT NOT NULL,
-            height_inches INTEGER NOT NULL,
-            weight INTEGER,
-            wingspan_inches INTEGER,
-            jersey_number INTEGER,
-            grad_year INTEGER NOT NULL,
-            gpa REAL,
-            status TEXT DEFAULT 'active' CHECK(status IN ('active','injured','inactive')),
-            photo_url TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS season_averages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id INTEGER NOT NULL,
-            season TEXT NOT NULL,
-            games_played INTEGER DEFAULT 0,
-            mpg REAL DEFAULT 0,
-            ppg REAL DEFAULT 0,
-            rpg REAL DEFAULT 0,
-            apg REAL DEFAULT 0,
-            spg REAL DEFAULT 0,
-            bpg REAL DEFAULT 0,
-            fg_pct REAL DEFAULT 0,
-            three_pct REAL DEFAULT 0,
-            ft_pct REAL DEFAULT 0,
-            topg REAL DEFAULT 0,
-            is_manual INTEGER DEFAULT 1,
-            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS game_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id INTEGER NOT NULL,
-            game_date TEXT NOT NULL,
-            opponent TEXT NOT NULL,
-            result TEXT CHECK(result IN ('W','L')),
-            minutes INTEGER DEFAULT 0,
-            points INTEGER DEFAULT 0,
-            rebounds INTEGER DEFAULT 0,
-            assists INTEGER DEFAULT 0,
-            steals INTEGER DEFAULT 0,
-            blocks INTEGER DEFAULT 0,
-            fg_made INTEGER DEFAULT 0,
-            fg_attempted INTEGER DEFAULT 0,
-            three_made INTEGER DEFAULT 0,
-            three_attempted INTEGER DEFAULT 0,
-            ft_made INTEGER DEFAULT 0,
-            ft_attempted INTEGER DEFAULT 0,
-            turnovers INTEGER DEFAULT 0,
-            fouls INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS coach_evaluations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id INTEGER NOT NULL,
-            coach_name TEXT NOT NULL,
-            eval_date TEXT DEFAULT (date('now')),
-            speed INTEGER CHECK(speed BETWEEN 1 AND 10),
-            vertical INTEGER CHECK(vertical BETWEEN 1 AND 10),
-            agility INTEGER CHECK(agility BETWEEN 1 AND 10),
-            strength INTEGER CHECK(strength BETWEEN 1 AND 10),
-            endurance INTEGER CHECK(endurance BETWEEN 1 AND 10),
-            ball_handling INTEGER CHECK(ball_handling BETWEEN 1 AND 10),
-            passing INTEGER CHECK(passing BETWEEN 1 AND 10),
-            shooting_form INTEGER CHECK(shooting_form BETWEEN 1 AND 10),
-            post_moves INTEGER CHECK(post_moves BETWEEN 1 AND 10),
-            off_ball_movement INTEGER CHECK(off_ball_movement BETWEEN 1 AND 10),
-            transition_play INTEGER CHECK(transition_play BETWEEN 1 AND 10),
-            basketball_iq INTEGER CHECK(basketball_iq BETWEEN 1 AND 10),
-            motor INTEGER CHECK(motor BETWEEN 1 AND 10),
-            coachability INTEGER CHECK(coachability BETWEEN 1 AND 10),
-            leadership INTEGER CHECK(leadership BETWEEN 1 AND 10),
-            clutch INTEGER CHECK(clutch BETWEEN 1 AND 10),
-            defensive_instincts INTEGER CHECK(defensive_instincts BETWEEN 1 AND 10),
-            notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS shot_charts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id INTEGER NOT NULL,
-            season TEXT NOT NULL,
-            zone_id INTEGER NOT NULL CHECK(zone_id BETWEEN 1 AND 11),
-            zone_name TEXT NOT NULL,
-            fg_made INTEGER DEFAULT 0,
-            fg_attempted INTEGER DEFAULT 0,
-            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
-            UNIQUE(player_id, season, zone_id)
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS conditioning_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id INTEGER NOT NULL,
-            log_date TEXT NOT NULL,
-            mile_time_sec REAL,
-            shuttle_sec REAL,
-            vertical_inches REAL,
-            broad_jump_inches REAL,
-            bench_reps INTEGER,
-            body_weight REAL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS development_goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id INTEGER NOT NULL,
-            category TEXT NOT NULL,
-            description TEXT NOT NULL,
-            target_value REAL,
-            current_value REAL DEFAULT 0,
-            unit TEXT DEFAULT '',
-            deadline TEXT,
-            status TEXT DEFAULT 'in_progress' CHECK(status IN ('in_progress','achieved','behind')),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS lineups (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS lineup_slots (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            lineup_id INTEGER NOT NULL,
-            player_id INTEGER NOT NULL,
-            slot_position TEXT NOT NULL,
-            slot_order INTEGER NOT NULL DEFAULT 1,
-            FOREIGN KEY (lineup_id) REFERENCES lineups(id) ON DELETE CASCADE,
-            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
-            UNIQUE(lineup_id, player_id)
-        )
-    """)
-
-    conn.commit()
+    schema = PG_SCHEMA if DATABASE_URL else SQLITE_SCHEMA
+    if DATABASE_URL:
+        cur = conn._conn.cursor()
+        for stmt in schema:
+            cur.execute(stmt)
+        conn._conn.commit()
+    else:
+        c = conn.cursor()
+        for stmt in schema:
+            c.execute(stmt)
+        conn.commit()
     conn.close()
 
+
+# ── Constants ────────────────────────────────────────────────────
 
 ZONE_NAMES = {
     1: "Rim", 2: "Paint", 3: "Left Baseline Mid", 4: "Right Baseline Mid",
@@ -200,6 +440,8 @@ ZONE_NAMES = {
     9: "Left Wing 3", 10: "Top of Key 3", 11: "Right Wing 3",
 }
 
+
+# ── Helpers ──────────────────────────────────────────────────────
 
 def get_team_config():
     conn = get_db()
@@ -256,11 +498,6 @@ def calculate_season_averages(player_id, season, conn=None):
     if conn is None:
         conn = get_db()
         close_conn = True
-
-    logs = conn.execute(
-        "SELECT * FROM game_logs WHERE player_id = ? AND game_date LIKE ?",
-        (player_id, f"%"),
-    ).fetchall()
 
     logs = conn.execute(
         "SELECT * FROM game_logs WHERE player_id = ?", (player_id,),
@@ -390,8 +627,13 @@ def get_player_full(player_id):
 
 def seed_players():
     conn = get_db()
-    count = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
-    if count > 0:
+    count = conn.execute("SELECT COUNT(*) FROM players").fetchone()
+    # Handle both sqlite3.Row (index access) and dict (key access)
+    if isinstance(count, dict):
+        cnt = list(count.values())[0]
+    else:
+        cnt = count[0]
+    if cnt > 0:
         conn.close()
         return
 
@@ -440,7 +682,13 @@ def seed_players():
                                  wingspan_inches, jersey_number, grad_year, gpa, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
         """, (first, last, pos, ht, wt, ws, jersey, grad, gpa))
-        pid = cur.lastrowid
+
+        # Get the player id
+        if DATABASE_URL:
+            pid = cur.lastrowid
+        else:
+            pid = cur.lastrowid
+
         gp, mpg, ppg, rpg, apg, spg, bpg, fg, three, ft, topg = stats[i]
         conn.execute("""
             INSERT INTO season_averages (player_id, season, games_played, mpg, ppg, rpg, apg, spg, bpg,

@@ -1,3 +1,9 @@
+databases:
+  - name: courtiq-db
+    plan: free
+    databaseName: courtiq
+    user: courtiq_user
+
 services:
   - type: web
     name: courtiq
@@ -8,3 +14,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.6"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: courtiq-db
+          property: connectionString

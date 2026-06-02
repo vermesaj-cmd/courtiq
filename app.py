@@ -279,6 +279,8 @@ def evaluate_player(player_id):
             flash("Coach name is required.", "danger")
             return redirect(url_for("evaluate_player", player_id=player_id))
 
+        from datetime import date as _date
+        today = _date.today().isoformat()
         conn.execute("""
             INSERT INTO coach_evaluations (
                 player_id, coach_name, eval_date,
@@ -286,9 +288,9 @@ def evaluate_player(player_id):
                 ball_handling, passing, shooting_form, post_moves, off_ball_movement, transition_play,
                 basketball_iq, motor, coachability, leadership, clutch, defensive_instincts,
                 notes
-            ) VALUES (?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            player_id, coach_name,
+            player_id, coach_name, today,
             int(f.get("speed", 5)), int(f.get("vertical", 5)),
             int(f.get("agility", 5)), int(f.get("strength", 5)),
             int(f.get("endurance", 5)),
