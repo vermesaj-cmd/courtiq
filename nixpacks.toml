@@ -3,4 +3,4 @@ MISE_PYTHON_GITHUB_ATTESTATIONS = "false"
 PYTHON_VERSION = "3.12"
 
 [start]
-cmd = "gunicorn app:app --bind 0.0.0.0:${PORT:-8080}"
+cmd = "gunicorn app:app --config gunicorn_config.py"
