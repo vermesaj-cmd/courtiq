@@ -66,35 +66,98 @@
             </div>
         </div>
 
-        <!-- Mini Shot Chart -->
+        <!-- Shot Chart -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between">
                 <span><i class="bi bi-grid-3x3"></i> Shot Chart</span>
                 <a href="/players/{{ p.id }}/shot-chart" class="btn btn-sm btn-outline-warning">Edit</a>
             </div>
-            <div class="card-body text-center">
+            <div class="card-body text-center" style="background: #0d1117; border-radius: 0 0 10px 10px;">
                 {% if data.shot_chart %}
-                <svg viewBox="0 0 500 470" style="max-width:300px; width:100%; opacity:0.9;">
-                    <rect x="0" y="0" width="500" height="470" fill="none" stroke="#30363d" stroke-width="2"/>
-                    <rect x="170" y="280" width="160" height="190" fill="none" stroke="#30363d" stroke-width="1"/>
-                    <circle cx="250" cy="420" r="8" fill="none" stroke="#ff8c00" stroke-width="2"/>
-                    <path d="M 30,470 L 30,310 Q 30,150 250,130 Q 470,150 470,310 L 470,470" fill="none" stroke="#30363d" stroke-width="1"/>
+                <svg viewBox="0 0 500 470" style="max-width:360px; width:100%; margin:0 auto; display:block;">
+                    <defs>
+                        <radialGradient id="pdGlow" cx="50%" cy="90%" r="60%">
+                            <stop offset="0%" stop-color="#1a1f2e"/><stop offset="100%" stop-color="#0d1117"/>
+                        </radialGradient>
+                        <radialGradient id="pdHot" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(76,175,80,0.75)"/><stop offset="100%" stop-color="rgba(56,142,60,0.45)"/>
+                        </radialGradient>
+                        <radialGradient id="pdAvg" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(255,193,7,0.7)"/><stop offset="100%" stop-color="rgba(245,127,23,0.4)"/>
+                        </radialGradient>
+                        <radialGradient id="pdCold" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(239,83,80,0.7)"/><stop offset="100%" stop-color="rgba(198,40,40,0.4)"/>
+                        </radialGradient>
+                    </defs>
+
+                    <rect x="0" y="0" width="500" height="470" fill="url(#pdGlow)" rx="4"/>
+
+                    <!-- Zones -->
                     {% for z in data.shot_chart %}
                     {% if z.fg_attempted > 0 %}
-                    {% set pct = z.fg_made / z.fg_attempted * 100 %}
-                    {% set color = 'rgba(76,175,80,0.6)' if pct >= 45 else ('rgba(255,193,7,0.6)' if pct >= 30 else 'rgba(239,83,80,0.6)') %}
+                        {% set pct = z.fg_made / z.fg_attempted * 100 %}
+                        {% set grad = 'url(#pdHot)' if pct >= 45 else ('url(#pdAvg)' if pct >= 30 else 'url(#pdCold)') %}
                     {% else %}
-                    {% set color = '#21262d' %}
+                        {% set grad = '#161b22' %}
                     {% endif %}
-                    {% if z.zone_id == 1 %}<circle cx="250" cy="420" r="35" fill="{{ color }}"/>
-                    {% elif z.zone_id == 2 %}<rect x="170" y="280" width="160" height="140" fill="{{ color }}"/>
-                    {% elif z.zone_id == 7 %}<rect x="0" y="310" width="30" height="160" fill="{{ color }}"/>
-                    {% elif z.zone_id == 8 %}<rect x="470" y="310" width="30" height="160" fill="{{ color }}"/>
+                    {% if z.zone_id == 10 %}<path d="M 30,160 L 470,160 L 470,0 L 0,0 L 0,160 Z" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 9 %}<polygon points="0,160 30,160 30,310 0,310" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 11 %}<polygon points="500,160 470,160 470,310 500,310" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 7 %}<rect x="0" y="310" width="30" height="160" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 8 %}<rect x="470" y="310" width="30" height="160" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 5 %}<polygon points="30,310 170,280 170,160 30,160" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 6 %}<polygon points="470,310 330,280 330,160 470,160" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 3 %}<polygon points="30,470 170,470 170,280 30,310" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 4 %}<polygon points="470,470 330,470 330,280 470,310" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 2 %}<path d="M 170,280 L 330,280 L 330,470 L 170,470 Z" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
+                    {% elif z.zone_id == 1 %}<circle cx="250" cy="418" r="38" fill="{{ grad }}" stroke="#30363d" stroke-width="1"/>
                     {% endif %}
                     {% endfor %}
+
+                    <!-- Court lines -->
+                    <rect x="0" y="0" width="500" height="470" fill="none" stroke="#30363d" stroke-width="2.5" rx="4"/>
+                    <path d="M 30,470 L 30,310 Q 30,145 250,125 Q 470,145 470,310 L 470,470" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+                    <rect x="170" y="280" width="160" height="190" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                    <circle cx="250" cy="280" r="60" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="6,4"/>
+                    <line x1="218" y1="435" x2="282" y2="435" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
+                    <circle cx="250" cy="424" r="9" fill="none" stroke="#ff8c00" stroke-width="2.5"/>
+                    <line x1="244" y1="432" x2="241" y2="445" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <line x1="250" y1="433" x2="250" y2="447" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <line x1="256" y1="432" x2="259" y2="445" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <path d="M 234,440 Q 234,400 250,395 Q 266,400 266,440" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+
+                    <!-- FG% labels -->
+                    {% for z in data.shot_chart %}
+                    {% if z.fg_attempted > 0 %}
+                        {% set pct = (z.fg_made / z.fg_attempted * 100)|round(0)|int %}
+                        {% set detail = z.fg_made|string + '/' + z.fg_attempted|string %}
+                    {% else %}
+                        {% set pct = None %}
+                        {% set detail = None %}
+                    {% endif %}
+                    {% set coords = {1:(250,410), 2:(250,340), 3:(100,385), 4:(400,385), 5:(100,235), 6:(400,235), 7:(15,385), 8:(485,385), 9:(15,235), 10:(250,75), 11:(485,235)} %}
+                    {% set names = {1:'RIM', 2:'PAINT', 3:'L MID', 4:'R MID', 5:'L ELBOW', 6:'R ELBOW', 7:'LC3', 8:'RC3', 9:'LW3', 10:'TOP 3', 11:'RW3'} %}
+                    {% set name_y = {1:397, 2:325, 3:370, 4:370, 5:220, 6:220, 7:370, 8:370, 9:220, 10:60, 11:220} %}
+                    {% set det_y = {1:425, 2:355, 3:400, 4:400, 5:250, 6:250, 7:400, 8:400, 9:250, 10:90, 11:250} %}
+                    <text class="zone-name" x="{{ coords[z.zone_id][0] }}" y="{{ name_y[z.zone_id] }}">{{ names[z.zone_id] }}</text>
+                    <text class="zone-pct" x="{{ coords[z.zone_id][0] }}" y="{{ coords[z.zone_id][1] }}">{% if pct is not none %}{{ pct }}%{% else %}—{% endif %}</text>
+                    <text class="zone-detail" x="{{ coords[z.zone_id][0] }}" y="{{ det_y[z.zone_id] }}">{% if detail %}{{ detail }}{% endif %}</text>
+                    {% endfor %}
                 </svg>
+                <!-- Legend -->
+                <div class="mt-2">
+                    <div class="d-flex justify-content-center gap-3 flex-wrap" style="font-size:0.72rem;">
+                        <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(76,175,80,0.75), rgba(56,142,60,0.5));"></span> &ge;45%</span>
+                        <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(255,193,7,0.7), rgba(245,127,23,0.45));"></span> 30–45%</span>
+                        <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(239,83,80,0.7), rgba(198,40,40,0.45));"></span> &lt;30%</span>
+                        <span><span class="legend-swatch" style="background:#161b22; border:1px solid #30363d;"></span> No Data</span>
+                    </div>
+                </div>
                 {% else %}
-                <p class="text-muted mb-0">No shot chart data. <a href="/players/{{ p.id }}/shot-chart">Add data</a>.</p>
+                <div class="py-4">
+                    <i class="bi bi-crosshair text-muted" style="font-size:2rem;"></i>
+                    <p class="text-muted mb-0 mt-2">No shot chart data. <a href="/players/{{ p.id }}/shot-chart" class="text-warning">Add data</a>.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
