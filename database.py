@@ -102,7 +102,10 @@ class PgConnectionWrapper:
 
 def get_db():
     if DATABASE_URL:
-        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+        except Exception:
+            conn = psycopg2.connect(DATABASE_URL, sslmode="disable")
         return PgConnectionWrapper(conn)
     else:
         conn = sqlite3.connect(DB_PATH)
