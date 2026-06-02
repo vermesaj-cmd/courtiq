@@ -9,7 +9,7 @@ from database import (
     get_db, init_db, get_team_config, update_team_config,
     get_player_full, get_eval_averages, calculate_season_averages,
     seed_players, seed_default_user, verify_user, get_user_by_id, create_user,
-    ZONE_NAMES,
+    ZONE_NAMES, DATABASE_URL,
 )
 
 app = Flask(__name__)
@@ -79,7 +79,17 @@ def inject_globals():
 # ── Auth ──────────────────────────────────────────────────────────
 @app.route("/health")
 def health():
-    return "OK", 200
+    info = {"status": "ok", "db_backend": "postgresql" if DATABASE_URL else "sqlite (EPHEMERAL!)"}
+    try:
+        conn = get_db()
+        count = conn.execute("SELECT COUNT(*) AS cnt FROM players").fetchone()
+        evals = conn.execute("SELECT COUNT(*) AS cnt FROM coach_evaluations").fetchone()
+        info["players"] = count["cnt"] if isinstance(count, dict) else count[0]
+        info["evaluations"] = evals["cnt"] if isinstance(evals, dict) else evals[0]
+        conn.close()
+    except Exception as e:
+        info["db_error"] = str(e)
+    return jsonify(info)
 
 
 @app.before_request
