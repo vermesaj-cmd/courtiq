@@ -21,9 +21,13 @@ login_manager.login_view = "login"
 login_manager.login_message = "Please log in to access CourtIQ."
 login_manager.login_message_category = "warning"
 
-init_db()
-seed_players()
-seed_default_user()
+try:
+    init_db()
+    seed_players()
+    seed_default_user()
+    print("Database initialized successfully.", flush=True)
+except Exception as e:
+    print(f"DATABASE INIT ERROR: {e}", flush=True)
 
 
 class User(UserMixin):
@@ -63,9 +67,14 @@ def inject_globals():
 
 
 # ── Auth ──────────────────────────────────────────────────────────
+@app.route("/health")
+def health():
+    return "OK", 200
+
+
 @app.before_request
 def require_login():
-    allowed = ("login", "static")
+    allowed = ("login", "static", "health")
     if request.endpoint and request.endpoint not in allowed and not current_user.is_authenticated:
         return redirect(url_for("login", next=request.url))
 
