@@ -1,18 +1,43 @@
 import csv
 import io
 import json
+import os
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, Response
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 from database import (
     get_db, init_db, get_team_config, update_team_config,
-    get_player_full, get_eval_averages, calculate_season_averages, seed_players, ZONE_NAMES,
+    get_player_full, get_eval_averages, calculate_season_averages,
+    seed_players, seed_default_user, verify_user, get_user_by_id, create_user,
+    ZONE_NAMES,
 )
 
 app = Flask(__name__)
-app.secret_key = "courtiq-dev-key"
+app.secret_key = os.environ.get("SECRET_KEY", "courtiq-dev-key")
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+login_manager.login_message = "Please log in to access CourtIQ."
+login_manager.login_message_category = "warning"
 
 init_db()
 seed_players()
+seed_default_user()
+
+
+class User(UserMixin):
+    def __init__(self, user_dict):
+        self.id = user_dict["id"]
+        self.username = user_dict["username"]
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    data = get_user_by_id(int(user_id))
+    if data:
+        return User(data)
+    return None
 
 POSITIONS = ["PG", "SG", "SF", "PF", "C"]
 STATUSES = ["active", "injured", "inactive"]
@@ -37,8 +62,69 @@ def inject_globals():
     }
 
 
+# ── Auth ──────────────────────────────────────────────────────────
+@app.before_request
+def require_login():
+    allowed = ("login", "static")
+    if request.endpoint and request.endpoint not in allowed and not current_user.is_authenticated:
+        return redirect(url_for("login", next=request.url))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user_data = verify_user(username, password)
+        if user_data:
+            login_user(User(user_data), remember=True)
+            next_page = request.args.get("next")
+            return redirect(next_page or url_for("index"))
+        flash("Invalid username or password.", "danger")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("Logged out.", "info")
+    return redirect(url_for("login"))
+
+
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_pw = request.form.get("current_password", "")
+        new_pw = request.form.get("new_password", "")
+        confirm_pw = request.form.get("confirm_password", "")
+
+        user_data = verify_user(current_user.username, current_pw)
+        if not user_data:
+            flash("Current password is incorrect.", "danger")
+        elif len(new_pw) < 4:
+            flash("New password must be at least 4 characters.", "danger")
+        elif new_pw != confirm_pw:
+            flash("New passwords don't match.", "danger")
+        else:
+            from database import _hash_pw
+            conn = get_db()
+            conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                         (_hash_pw(new_pw), current_user.id))
+            conn.commit()
+            conn.close()
+            flash("Password changed successfully.", "success")
+            return redirect(url_for("team_settings"))
+
+    return render_template("change_password.html")
+
+
 # ── Dashboard ─────────────────────────────────────────────────────
 @app.route("/")
+@login_required
 def index():
     conn = get_db()
     config = get_team_config()

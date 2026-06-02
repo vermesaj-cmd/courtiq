@@ -31,4 +31,13 @@
         </form>
     </div>
 </div>
+
+<!-- Account -->
+<div class="card mt-4">
+    <div class="card-header"><i class="bi bi-person-lock"></i> Account</div>
+    <div class="card-body">
+        <p class="text-muted mb-2">Logged in as <strong>{{ current_user.username }}</strong></p>
+        <a href="/change-password" class="btn btn-outline-warning"><i class="bi bi-key"></i> Change Password</a>
+    </div>
+</div>
 {% endblock %}

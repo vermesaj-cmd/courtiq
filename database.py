@@ -1,6 +1,10 @@
 import os
 import re
 import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+
+def _hash_pw(password):
+    return generate_password_hash(password, method="pbkdf2:sha256")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "courtiq.db")
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -119,6 +123,13 @@ SQLITE_SCHEMA = [
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""",
     "INSERT OR IGNORE INTO team_config (id) VALUES (1)",
+
+    """CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
 
     """CREATE TABLE IF NOT EXISTS players (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -276,6 +287,13 @@ PG_SCHEMA = [
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""",
     "INSERT INTO team_config (id) VALUES (1) ON CONFLICT DO NOTHING",
+
+    """CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
 
     """CREATE TABLE IF NOT EXISTS players (
         id SERIAL PRIMARY KEY,
@@ -623,6 +641,49 @@ def get_player_full(player_id):
         "goals": [dict(g) for g in goals],
         "eval_data": eval_data,
     }
+
+
+def create_user(username, password):
+    conn = get_db()
+    pw_hash = _hash_pw(password)
+    try:
+        conn.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            (username, pw_hash),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    conn.close()
+
+
+def verify_user(username, password):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    conn.close()
+    if row and check_password_hash(row["password_hash"], password):
+        return dict(row)
+    return None
+
+
+def get_user_by_id(user_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def seed_default_user():
+    """Create default admin account if no users exist."""
+    conn = get_db()
+    count = conn.execute("SELECT COUNT(*) FROM users").fetchone()
+    if isinstance(count, dict):
+        cnt = list(count.values())[0]
+    else:
+        cnt = count[0]
+    conn.close()
+    if cnt == 0:
+        create_user("coach", "courtiq2025")
 
 
 def seed_players():
