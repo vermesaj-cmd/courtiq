@@ -13,72 +13,118 @@
 <div class="row g-4">
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header">{{ season }} Season</div>
-            <div class="card-body text-center position-relative" id="court-container">
-                <svg id="court-svg" viewBox="0 0 500 470" style="max-width:500px; width:100%;">
-                    <!-- Court outline -->
-                    <rect x="0" y="0" width="500" height="470" fill="none" stroke="#30363d" stroke-width="2"/>
-                    <!-- Backboard -->
-                    <line x1="220" y1="430" x2="280" y2="430" stroke="#555" stroke-width="3"/>
-                    <!-- Rim -->
-                    <circle cx="250" cy="420" r="8" fill="none" stroke="#ff8c00" stroke-width="2"/>
-                    <!-- Free throw lane -->
-                    <rect x="170" y="280" width="160" height="190" fill="none" stroke="#30363d" stroke-width="1.5"/>
-                    <!-- FT circle -->
-                    <circle cx="250" cy="280" r="60" fill="none" stroke="#30363d" stroke-width="1" stroke-dasharray="5,5"/>
-                    <!-- 3pt line -->
-                    <path d="M 30,470 L 30,310 Q 30,150 250,130 Q 470,150 470,310 L 470,470" fill="none" stroke="#30363d" stroke-width="1.5"/>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-grid-3x3"></i> {{ season }} Season</span>
+                <small class="text-muted">Click a zone to edit</small>
+            </div>
+            <div class="card-body text-center position-relative" id="court-container" style="background: #0d1117; border-radius: 0 0 10px 10px;">
+                <svg id="court-svg" viewBox="0 0 500 470" style="max-width:520px; width:100%; margin: 10px auto; display:block;">
+                    <defs>
+                        <!-- Gradient for court floor -->
+                        <radialGradient id="courtGlow" cx="50%" cy="90%" r="60%">
+                            <stop offset="0%" stop-color="#1a1f2e" />
+                            <stop offset="100%" stop-color="#0d1117" />
+                        </radialGradient>
+                        <!-- Zone color gradients -->
+                        <radialGradient id="hotGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(76,175,80,0.75)" />
+                            <stop offset="100%" stop-color="rgba(56,142,60,0.45)" />
+                        </radialGradient>
+                        <radialGradient id="avgGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(255,193,7,0.7)" />
+                            <stop offset="100%" stop-color="rgba(245,127,23,0.4)" />
+                        </radialGradient>
+                        <radialGradient id="coldGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(239,83,80,0.7)" />
+                            <stop offset="100%" stop-color="rgba(198,40,40,0.4)" />
+                        </radialGradient>
+                    </defs>
 
-                    <!-- Zone 1: Rim -->
-                    <circle class="court-zone" data-zone-id="1" cx="250" cy="420" r="35" fill="#21262d"/>
-                    <!-- Zone 2: Paint -->
-                    <path class="court-zone" data-zone-id="2" d="M 170,280 L 330,280 L 330,470 L 170,470 Z" fill="#21262d"/>
-                    <!-- Re-draw rim zone on top -->
-                    <circle class="court-zone" data-zone-id="1" cx="250" cy="420" r="35" fill="#21262d"/>
-                    <!-- Zone 3: Left Baseline Mid -->
-                    <polygon class="court-zone" data-zone-id="3" points="30,470 170,470 170,280 30,310" fill="#21262d"/>
-                    <!-- Zone 4: Right Baseline Mid -->
-                    <polygon class="court-zone" data-zone-id="4" points="470,470 330,470 330,280 470,310" fill="#21262d"/>
-                    <!-- Zone 5: Left Elbow -->
-                    <polygon class="court-zone" data-zone-id="5" points="30,310 170,280 170,160 30,160" fill="#21262d"/>
-                    <!-- Zone 6: Right Elbow -->
-                    <polygon class="court-zone" data-zone-id="6" points="470,310 330,280 330,160 470,160" fill="#21262d"/>
-                    <!-- Zone 7: Left Corner 3 -->
-                    <rect class="court-zone" data-zone-id="7" x="0" y="310" width="30" height="160" fill="#21262d"/>
-                    <!-- Zone 8: Right Corner 3 -->
-                    <rect class="court-zone" data-zone-id="8" x="470" y="310" width="30" height="160" fill="#21262d"/>
-                    <!-- Zone 9: Left Wing 3 -->
-                    <polygon class="court-zone" data-zone-id="9" points="0,160 30,160 30,310 0,310" fill="#21262d"/>
+                    <!-- Court background -->
+                    <rect x="0" y="0" width="500" height="470" fill="url(#courtGlow)" rx="4"/>
+
+                    <!-- Zones (bottom layer) -->
                     <!-- Zone 10: Top of Key 3 -->
-                    <path class="court-zone" data-zone-id="10" d="M 30,160 L 170,160 L 330,160 L 470,160 L 470,0 L 0,0 L 0,160 Z" fill="#21262d"/>
+                    <path class="court-zone" data-zone-id="10" d="M 30,160 L 470,160 L 470,0 L 0,0 L 0,160 Z" fill="#161b22"/>
+                    <!-- Zone 9: Left Wing 3 -->
+                    <polygon class="court-zone" data-zone-id="9" points="0,160 30,160 30,310 0,310" fill="#161b22"/>
                     <!-- Zone 11: Right Wing 3 -->
-                    <polygon class="court-zone" data-zone-id="11" points="500,160 470,160 470,310 500,310" fill="#21262d"/>
+                    <polygon class="court-zone" data-zone-id="11" points="500,160 470,160 470,310 500,310" fill="#161b22"/>
+                    <!-- Zone 7: Left Corner 3 -->
+                    <rect class="court-zone" data-zone-id="7" x="0" y="310" width="30" height="160" fill="#161b22"/>
+                    <!-- Zone 8: Right Corner 3 -->
+                    <rect class="court-zone" data-zone-id="8" x="470" y="310" width="30" height="160" fill="#161b22"/>
+                    <!-- Zone 5: Left Elbow -->
+                    <polygon class="court-zone" data-zone-id="5" points="30,310 170,280 170,160 30,160" fill="#161b22"/>
+                    <!-- Zone 6: Right Elbow -->
+                    <polygon class="court-zone" data-zone-id="6" points="470,310 330,280 330,160 470,160" fill="#161b22"/>
+                    <!-- Zone 3: Left Baseline Mid -->
+                    <polygon class="court-zone" data-zone-id="3" points="30,470 170,470 170,280 30,310" fill="#161b22"/>
+                    <!-- Zone 4: Right Baseline Mid -->
+                    <polygon class="court-zone" data-zone-id="4" points="470,470 330,470 330,280 470,310" fill="#161b22"/>
+                    <!-- Zone 2: Paint -->
+                    <path class="court-zone" data-zone-id="2" d="M 170,280 L 330,280 L 330,470 L 170,470 Z" fill="#161b22"/>
+                    <!-- Zone 1: Rim (on top) -->
+                    <circle class="court-zone" data-zone-id="1" cx="250" cy="418" r="38" fill="#161b22"/>
 
-                    <!-- Zone labels (FG%) -->
-                    <text class="zone-label" data-zone-label="1" x="250" y="425">—</text>
-                    <text class="zone-label" data-zone-label="2" x="250" y="350">—</text>
-                    <text class="zone-label" data-zone-label="3" x="100" y="400">—</text>
-                    <text class="zone-label" data-zone-label="4" x="400" y="400">—</text>
-                    <text class="zone-label" data-zone-label="5" x="100" y="250">—</text>
-                    <text class="zone-label" data-zone-label="6" x="400" y="250">—</text>
-                    <text class="zone-label" data-zone-label="7" x="15" y="400">—</text>
-                    <text class="zone-label" data-zone-label="8" x="485" y="400">—</text>
-                    <text class="zone-label" data-zone-label="9" x="15" y="240">—</text>
-                    <text class="zone-label" data-zone-label="10" x="250" y="90">—</text>
-                    <text class="zone-label" data-zone-label="11" x="485" y="240">—</text>
+                    <!-- Court lines (on top of zones) -->
+                    <!-- Outer boundary -->
+                    <rect x="0" y="0" width="500" height="470" fill="none" stroke="#30363d" stroke-width="2.5" rx="4"/>
+                    <!-- 3pt arc -->
+                    <path d="M 30,470 L 30,310 Q 30,145 250,125 Q 470,145 470,310 L 470,470" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+                    <!-- Free throw lane -->
+                    <rect x="170" y="280" width="160" height="190" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+                    <!-- FT circle -->
+                    <circle cx="250" cy="280" r="60" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="6,4"/>
+                    <!-- Backboard -->
+                    <line x1="218" y1="435" x2="282" y2="435" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
+                    <!-- Rim -->
+                    <circle cx="250" cy="424" r="9" fill="none" stroke="#ff8c00" stroke-width="2.5"/>
+                    <!-- Net lines -->
+                    <line x1="244" y1="432" x2="241" y2="445" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <line x1="250" y1="433" x2="250" y2="447" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <line x1="256" y1="432" x2="259" y2="445" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                    <!-- Restricted arc -->
+                    <path d="M 234,440 Q 234,400 250,395 Q 266,400 266,440" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+
+                    <!-- FG% labels -->
+                    <text class="zone-pct" data-zone-label="1" x="250" y="410">—</text>
+                    <text class="zone-pct" data-zone-label="2" x="250" y="340">—</text>
+                    <text class="zone-pct" data-zone-label="3" x="100" y="385">—</text>
+                    <text class="zone-pct" data-zone-label="4" x="400" y="385">—</text>
+                    <text class="zone-pct" data-zone-label="5" x="100" y="235">—</text>
+                    <text class="zone-pct" data-zone-label="6" x="400" y="235">—</text>
+                    <text class="zone-pct" data-zone-label="7" x="15" y="385">—</text>
+                    <text class="zone-pct" data-zone-label="8" x="485" y="385">—</text>
+                    <text class="zone-pct" data-zone-label="9" x="15" y="235">—</text>
+                    <text class="zone-pct" data-zone-label="10" x="250" y="75">—</text>
+                    <text class="zone-pct" data-zone-label="11" x="485" y="235">—</text>
+
+                    <!-- Made/Attempted labels -->
+                    <text class="zone-detail" data-zone-detail="1" x="250" y="425"></text>
+                    <text class="zone-detail" data-zone-detail="2" x="250" y="355"></text>
+                    <text class="zone-detail" data-zone-detail="3" x="100" y="400"></text>
+                    <text class="zone-detail" data-zone-detail="4" x="400" y="400"></text>
+                    <text class="zone-detail" data-zone-detail="5" x="100" y="250"></text>
+                    <text class="zone-detail" data-zone-detail="6" x="400" y="250"></text>
+                    <text class="zone-detail" data-zone-detail="7" x="15" y="400"></text>
+                    <text class="zone-detail" data-zone-detail="8" x="485" y="400"></text>
+                    <text class="zone-detail" data-zone-detail="9" x="15" y="250"></text>
+                    <text class="zone-detail" data-zone-detail="10" x="250" y="90"></text>
+                    <text class="zone-detail" data-zone-detail="11" x="485" y="250"></text>
 
                     <!-- Zone name labels -->
-                    <text class="zone-name-label" data-zone-name="1" x="250" y="440">RIM</text>
-                    <text class="zone-name-label" data-zone-name="2" x="250" y="365">PAINT</text>
-                    <text class="zone-name-label" data-zone-name="3" x="100" y="415">L BASE</text>
-                    <text class="zone-name-label" data-zone-name="4" x="400" y="415">R BASE</text>
-                    <text class="zone-name-label" data-zone-name="5" x="100" y="265">L ELBOW</text>
-                    <text class="zone-name-label" data-zone-name="6" x="400" y="265">R ELBOW</text>
-                    <text class="zone-name-label" data-zone-name="7" x="15" y="415">LC3</text>
-                    <text class="zone-name-label" data-zone-name="8" x="485" y="415">RC3</text>
-                    <text class="zone-name-label" data-zone-name="9" x="15" y="255">LW3</text>
-                    <text class="zone-name-label" data-zone-name="10" x="250" y="105">TOP 3</text>
-                    <text class="zone-name-label" data-zone-name="11" x="485" y="255">RW3</text>
+                    <text class="zone-name" data-zone-name="1" x="250" y="397">RIM</text>
+                    <text class="zone-name" data-zone-name="2" x="250" y="325">PAINT</text>
+                    <text class="zone-name" data-zone-name="3" x="100" y="370">L MID</text>
+                    <text class="zone-name" data-zone-name="4" x="400" y="370">R MID</text>
+                    <text class="zone-name" data-zone-name="5" x="100" y="220">L ELBOW</text>
+                    <text class="zone-name" data-zone-name="6" x="400" y="220">R ELBOW</text>
+                    <text class="zone-name" data-zone-name="7" x="15" y="370">LC3</text>
+                    <text class="zone-name" data-zone-name="8" x="485" y="370">RC3</text>
+                    <text class="zone-name" data-zone-name="9" x="15" y="220">LW3</text>
+                    <text class="zone-name" data-zone-name="10" x="250" y="60">TOP 3</text>
+                    <text class="zone-name" data-zone-name="11" x="485" y="220">RW3</text>
                 </svg>
 
                 <!-- Zone editor popup -->
@@ -108,11 +154,11 @@
         <!-- Legend -->
         <div class="card mt-3">
             <div class="card-body py-2">
-                <div class="d-flex justify-content-center gap-4" style="font-size:0.8rem;">
-                    <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(76,175,80,0.6);vertical-align:middle;"></span> Hot (&ge;45%)</span>
-                    <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(255,193,7,0.6);vertical-align:middle;"></span> Avg (30-45%)</span>
-                    <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(239,83,80,0.6);vertical-align:middle;"></span> Cold (&lt;30%)</span>
-                    <span><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#21262d;border:1px solid #30363d;vertical-align:middle;"></span> No Data</span>
+                <div class="d-flex justify-content-center gap-4 flex-wrap" style="font-size:0.8rem;">
+                    <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(76,175,80,0.75), rgba(56,142,60,0.5));"></span> Hot (&ge;45%)</span>
+                    <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(255,193,7,0.7), rgba(245,127,23,0.45));"></span> Avg (30–45%)</span>
+                    <span><span class="legend-swatch" style="background: linear-gradient(135deg, rgba(239,83,80,0.7), rgba(198,40,40,0.45));"></span> Cold (&lt;30%)</span>
+                    <span><span class="legend-swatch" style="background:#161b22; border:1px solid #30363d;"></span> No Data</span>
                 </div>
             </div>
         </div>
@@ -120,28 +166,50 @@
 
     <div class="col-lg-5">
         <div class="card">
-            <div class="card-header">Zone Breakdown</div>
+            <div class="card-header"><i class="bi bi-bar-chart"></i> Zone Breakdown</div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 align-middle">
                         <thead>
-                            <tr><th>Zone</th><th>Made</th><th>Att</th><th>FG%</th></tr>
+                            <tr><th>Zone</th><th class="text-center">Made</th><th class="text-center">Att</th><th class="text-center">FG%</th><th style="width:100px;"></th></tr>
                         </thead>
                         <tbody>
                             {% for z in zones %}
+                            {% set pct = (z.fg_made / z.fg_attempted * 100)|round(1) if z.fg_attempted > 0 else 0 %}
                             <tr>
-                                <td>{{ zone_names[z.zone_id] }}</td>
-                                <td>{{ z.fg_made }}</td>
-                                <td>{{ z.fg_attempted }}</td>
+                                <td class="fw-semibold" style="font-size:0.85rem;">{{ zone_names[z.zone_id] }}</td>
+                                <td class="text-center">{{ z.fg_made }}</td>
+                                <td class="text-center">{{ z.fg_attempted }}</td>
+                                <td class="text-center">
+                                    {% if z.fg_attempted > 0 %}
+                                    <span class="fw-bold {% if pct >= 45 %}text-success{% elif pct >= 30 %}text-warning{% else %}text-danger{% endif %}">{{ pct }}%</span>
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
                                 <td>
                                     {% if z.fg_attempted > 0 %}
-                                    {% set pct = (z.fg_made / z.fg_attempted * 100)|round(1) %}
-                                    <span class="{% if pct >= 45 %}text-success{% elif pct >= 30 %}text-warning{% else %}text-danger{% endif %}">{{ pct }}%</span>
-                                    {% else %}—{% endif %}
+                                    <div class="progress" style="height:6px;">
+                                        <div class="progress-bar {% if pct >= 45 %}bg-success{% elif pct >= 30 %}bg-warning{% else %}bg-danger{% endif %}" style="width:{{ pct }}%;"></div>
+                                    </div>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
+                        {% set total_made = zones|sum(attribute='fg_made') %}
+                        {% set total_att = zones|sum(attribute='fg_attempted') %}
+                        <tfoot>
+                            <tr class="table-secondary">
+                                <td class="fw-bold">Total</td>
+                                <td class="text-center fw-bold">{{ total_made }}</td>
+                                <td class="text-center fw-bold">{{ total_att }}</td>
+                                <td class="text-center fw-bold">
+                                    {% if total_att > 0 %}
+                                    {{ (total_made / total_att * 100)|round(1) }}%
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -158,20 +226,24 @@ const zoneNamesMap = {{ zone_names|tojson }};
 function colorizeZones() {
     zoneData.forEach(z => {
         const els = document.querySelectorAll(`.court-zone[data-zone-id="${z.zone_id}"]`);
-        const label = document.querySelector(`[data-zone-label="${z.zone_id}"]`);
-        let fill = '#21262d';
-        let text = '—';
+        const pctLabel = document.querySelector(`[data-zone-label="${z.zone_id}"]`);
+        const detailLabel = document.querySelector(`[data-zone-detail="${z.zone_id}"]`);
+        let fill = '#161b22';
+        let pctText = '—';
+        let detailText = '';
 
         if (z.fg_attempted > 0) {
             const pct = (z.fg_made / z.fg_attempted * 100);
-            text = pct.toFixed(0) + '%';
-            if (pct >= 45) fill = 'rgba(76, 175, 80, 0.6)';
-            else if (pct >= 30) fill = 'rgba(255, 193, 7, 0.6)';
-            else fill = 'rgba(239, 83, 80, 0.6)';
+            pctText = pct.toFixed(0) + '%';
+            detailText = z.fg_made + '/' + z.fg_attempted;
+            if (pct >= 45) fill = 'url(#hotGrad)';
+            else if (pct >= 30) fill = 'url(#avgGrad)';
+            else fill = 'url(#coldGrad)';
         }
 
         els.forEach(el => el.setAttribute('fill', fill));
-        if (label) label.textContent = text;
+        if (pctLabel) pctLabel.textContent = pctText;
+        if (detailLabel) detailLabel.textContent = detailText;
     });
 }
 
@@ -185,8 +257,6 @@ function openZoneEditor(zoneId, evt) {
     const editor = document.getElementById('zone-editor');
     const container = document.getElementById('court-container');
     const rect = container.getBoundingClientRect();
-    const svg = document.getElementById('court-svg');
-    const svgRect = svg.getBoundingClientRect();
 
     let x = evt.clientX - rect.left + 10;
     let y = evt.clientY - rect.top + 10;
