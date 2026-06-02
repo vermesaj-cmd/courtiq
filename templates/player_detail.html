@@ -73,6 +73,7 @@
                 <a href="/players/{{ p.id }}/shot-chart" class="btn btn-sm btn-outline-warning">Edit</a>
             </div>
             <div class="card-body text-center" style="background: #0d1117; border-radius: 0 0 10px 10px;">
+                {% set has_shot_data = data.shot_chart|selectattr('fg_attempted', 'gt', 0)|list|length > 0 %}
                 {% if data.shot_chart %}
                 <svg viewBox="0 0 500 470" style="max-width:360px; width:100%; margin:0 auto; display:block;">
                     <defs>

@@ -616,10 +616,18 @@ def get_player_full(player_id):
     config = conn.execute("SELECT season FROM team_config WHERE id = 1").fetchone()
     current_season = config["season"] if config else "2025-26"
 
-    shot_chart = conn.execute(
+    shot_chart_rows = conn.execute(
         "SELECT * FROM shot_charts WHERE player_id = ? AND season = ? ORDER BY zone_id",
         (player_id, current_season),
     ).fetchall()
+    # Pad missing zones so the profile always shows all 11
+    shot_chart_map = {z["zone_id"]: dict(z) for z in shot_chart_rows}
+    shot_chart = []
+    for zid in range(1, 12):
+        if zid in shot_chart_map:
+            shot_chart.append(shot_chart_map[zid])
+        else:
+            shot_chart.append({"zone_id": zid, "zone_name": ZONE_NAMES.get(zid, ""), "fg_made": 0, "fg_attempted": 0})
 
     conditioning = conn.execute(
         "SELECT * FROM conditioning_logs WHERE player_id = ? ORDER BY log_date DESC",
@@ -639,7 +647,7 @@ def get_player_full(player_id):
         "player": dict(player),
         "season_averages": [dict(s) for s in season_avgs],
         "game_logs": [dict(g) for g in game_logs],
-        "shot_chart": [dict(z) for z in shot_chart],
+        "shot_chart": shot_chart,
         "conditioning": [dict(c) for c in conditioning],
         "goals": [dict(g) for g in goals],
         "eval_data": eval_data,
