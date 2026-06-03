@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ plan.name }} — CourtIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">
+        {% if plan.is_template %}<span class="badge text-bg-info me-2">Template</span>{% endif %}
+        {{ plan.name }}
+    </h3>
+    <div class="d-flex gap-2">
+        <a href="/practices/add?clone={{ plan.id }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-copy"></i> Clone</a>
+        <a href="/practices/{{ plan.id }}/edit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+        <a href="/practices" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                {% if plan.practice_date %}
+                <div class="mb-2"><i class="bi bi-calendar3 text-warning"></i> <strong>{{ plan.practice_date }}</strong></div>
+                {% endif %}
+                <div class="mb-2"><i class="bi bi-clock text-warning"></i> {{ plan.total_minutes }} minutes total</div>
+                {% set drill_time = drills|sum(attribute='duration_minutes') %}
+                <div class="mb-2"><i class="bi bi-list-check text-warning"></i> {{ drills|length }} drills ({{ drill_time }} min planned)</div>
+                {% if plan.notes %}
+                <hr class="border-secondary">
+                <p class="text-muted mb-0" style="font-size:0.85rem;">{{ plan.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Time Breakdown by Category -->
+        {% if drills %}
+        <div class="card mt-3">
+            <div class="card-header">Time Breakdown</div>
+            <div class="card-body">
+                {% set cats = {} %}
+                {% for d in drills %}
+                    {% if cats.update({d.category: cats.get(d.category, 0) + d.duration_minutes}) %}{% endif %}
+                {% endfor %}
+                {% for cat, mins in cats.items()|sort(key=lambda x: -x[1]) %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="cat-badge cat-{{ cat }}">{{ cat|replace('_', ' ') }}</span>
+                    <span class="fw-semibold">{{ mins }} min</span>
+                </div>
+                <div class="progress mb-2" style="height:6px;">
+                    <div class="progress-bar" style="width:{{ (mins / plan.total_minutes * 100)|round(0) }}%;"></div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-list-ol"></i> Drill Schedule</div>
+            <div class="card-body p-0">
+                {% if drills %}
+                {% set ns = namespace(running=0) %}
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle">
+                        <thead><tr><th style="width:40px;">#</th><th style="width:70px;">Time</th><th>Drill</th><th style="width:90px;">Category</th><th style="width:60px;" class="text-center">Min</th></tr></thead>
+                        <tbody>
+                        {% for d in drills %}
+                        {% set start_min = ns.running %}
+                        {% set ns.running = ns.running + d.duration_minutes %}
+                        <tr>
+                            <td class="text-muted">{{ loop.index }}</td>
+                            <td class="text-muted" style="font-size:0.8rem;">{{ '%d:%02d'|format(start_min // 60, start_min % 60) }}</td>
+                            <td>
+                                <div class="fw-semibold">{{ d.drill_name }}</div>
+                                {% if d.description %}<small class="text-muted">{{ d.description }}</small>{% endif %}
+                            </td>
+                            <td><span class="cat-badge cat-{{ d.category }}" style="font-size:0.6rem;">{{ d.category|replace('_',' ') }}</span></td>
+                            <td class="text-center fw-semibold">{{ d.duration_minutes }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-secondary">
+                                <td colspan="4" class="fw-bold">Total</td>
+                                <td class="text-center fw-bold">{{ drill_time }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-muted text-center">No drills added. <a href="/practices/{{ plan.id }}/edit" class="text-warning">Add some</a>.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

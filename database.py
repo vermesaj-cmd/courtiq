@@ -278,6 +278,40 @@ SQLITE_SCHEMA = [
         FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
         UNIQUE(lineup_id, player_id)
     )""",
+
+    """CREATE TABLE IF NOT EXISTS team_schedule (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        game_date TEXT NOT NULL,
+        opponent TEXT NOT NULL,
+        location TEXT DEFAULT '',
+        home_away TEXT DEFAULT 'home' CHECK(home_away IN ('home','away','neutral')),
+        result TEXT CHECK(result IN ('W','L',NULL)),
+        team_score INTEGER,
+        opp_score INTEGER,
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS practice_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        practice_date TEXT,
+        total_minutes INTEGER DEFAULT 90,
+        notes TEXT DEFAULT '',
+        is_template INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS practice_drills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id INTEGER NOT NULL,
+        drill_name TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'other',
+        duration_minutes INTEGER DEFAULT 10,
+        description TEXT DEFAULT '',
+        drill_order INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (plan_id) REFERENCES practice_plans(id) ON DELETE CASCADE
+    )""",
 ]
 
 PG_SCHEMA = [
@@ -433,6 +467,39 @@ PG_SCHEMA = [
         slot_position TEXT NOT NULL,
         slot_order INTEGER NOT NULL DEFAULT 1,
         UNIQUE(lineup_id, player_id)
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS team_schedule (
+        id SERIAL PRIMARY KEY,
+        game_date TEXT NOT NULL,
+        opponent TEXT NOT NULL,
+        location TEXT DEFAULT '',
+        home_away TEXT DEFAULT 'home',
+        result TEXT,
+        team_score INTEGER,
+        opp_score INTEGER,
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS practice_plans (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        practice_date TEXT,
+        total_minutes INTEGER DEFAULT 90,
+        notes TEXT DEFAULT '',
+        is_template INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""",
+
+    """CREATE TABLE IF NOT EXISTS practice_drills (
+        id SERIAL PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES practice_plans(id) ON DELETE CASCADE,
+        drill_name TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'other',
+        duration_minutes INTEGER DEFAULT 10,
+        description TEXT DEFAULT '',
+        drill_order INTEGER NOT NULL DEFAULT 1
     )""",
 ]
 
@@ -598,6 +665,54 @@ def calculate_season_averages(player_id, season, conn=None):
         conn.close()
 
 
+def calc_advanced_metrics(game_logs):
+    """Calculate PER, TS%, USG% from game logs."""
+    if not game_logs:
+        return {"per": None, "ts_pct": None, "usg_pct": None, "ortg": None}
+
+    total_pts = sum(g["points"] or 0 for g in game_logs)
+    total_reb = sum(g["rebounds"] or 0 for g in game_logs)
+    total_ast = sum(g["assists"] or 0 for g in game_logs)
+    total_stl = sum(g["steals"] or 0 for g in game_logs)
+    total_blk = sum(g["blocks"] or 0 for g in game_logs)
+    total_to = sum(g["turnovers"] or 0 for g in game_logs)
+    total_fga = sum(g["fg_attempted"] or 0 for g in game_logs)
+    total_fgm = sum(g["fg_made"] or 0 for g in game_logs)
+    total_fta = sum(g["ft_attempted"] or 0 for g in game_logs)
+    total_ftm = sum(g["ft_made"] or 0 for g in game_logs)
+    total_3m = sum(g["three_made"] or 0 for g in game_logs)
+    total_min = sum(g["minutes"] or 0 for g in game_logs)
+    total_fouls = sum(g["fouls"] or 0 for g in game_logs)
+    gp = len(game_logs)
+
+    # True Shooting % = PTS / (2 * (FGA + 0.44 * FTA))
+    ts_denom = 2 * (total_fga + 0.44 * total_fta)
+    ts_pct = round(total_pts / ts_denom * 100, 1) if ts_denom > 0 else None
+
+    # Simplified PER (John Hollinger's formula simplified for HS level)
+    # PER ≈ (PTS + REB + AST + STL + BLK - (FGA-FGM) - (FTA-FTM) - TO) / GP
+    if gp > 0 and total_min > 0:
+        missed_fg = total_fga - total_fgm
+        missed_ft = total_fta - total_ftm
+        raw = total_pts + total_reb + total_ast + total_stl + total_blk - missed_fg - missed_ft - total_to
+        per = round(raw / gp, 1)
+    else:
+        per = None
+
+    # Usage Rate % — what share of team possessions a player uses per game
+    # Simplified for HS: (FGA + 0.44*FTA + TO) per game / estimated ~65 team possessions
+    if gp > 0:
+        possessions_per_game = (total_fga + 0.44 * total_fta + total_to) / gp
+        usg_pct = round(possessions_per_game / 65 * 100, 1)
+    else:
+        usg_pct = None
+
+    # Offensive Rating (points produced per 40 minutes)
+    ortg = round(total_pts / total_min * 40, 1) if total_min > 0 else None
+
+    return {"per": per, "ts_pct": ts_pct, "usg_pct": usg_pct, "ortg": ortg}
+
+
 def get_player_full(player_id):
     conn = get_db()
     player = conn.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
@@ -643,10 +758,14 @@ def get_player_full(player_id):
 
     conn.close()
 
+    game_log_dicts = [dict(g) for g in game_logs]
+    advanced = calc_advanced_metrics(game_log_dicts)
+
     return {
         "player": dict(player),
         "season_averages": [dict(s) for s in season_avgs],
-        "game_logs": [dict(g) for g in game_logs],
+        "game_logs": game_log_dicts,
+        "advanced_metrics": advanced,
         "shot_chart": shot_chart,
         "conditioning": [dict(c) for c in conditioning],
         "goals": [dict(g) for g in goals],

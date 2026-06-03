@@ -93,9 +93,38 @@
         </div>
     </div>
 
-    <!-- Goal Progress -->
+    <!-- Season Record & Upcoming -->
     <div class="col-md-4">
         <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-calendar3"></i> Season</span>
+                <a href="/schedule" class="btn btn-sm btn-outline-warning">Full Schedule</a>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="stat-value" style="font-size:2rem;">{{ wins }}-{{ losses }}</div>
+                    <div class="stat-label">Record{% if wins + losses > 0 %} ({{ (wins / (wins + losses) * 100)|round(0)|int }}%){% endif %}</div>
+                </div>
+                {% if upcoming %}
+                <h6 class="text-muted text-uppercase" style="font-size:0.7rem;letter-spacing:1px;">Upcoming</h6>
+                {% for g in upcoming %}
+                <div class="d-flex justify-content-between mb-1" style="font-size:0.85rem;">
+                    <span>{% if g.home_away == 'away' %}@ {% endif %}{{ g.opponent }}</span>
+                    <span class="text-muted">{{ g.game_date }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted text-center mb-0" style="font-size:0.85rem;">No upcoming games. <a href="/schedule/add" class="text-warning">Add one</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Goal Progress -->
+<div class="row g-4 mb-4">
+    <div class="col-md-12">
+        <div class="card">
             <div class="card-header"><i class="bi bi-bullseye"></i> Goal Progress</div>
             <div class="card-body">
                 {% if goal_counts %}

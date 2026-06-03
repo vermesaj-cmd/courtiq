@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Leaderboards — CourtIQ{% endblock %}
+
+{% block content %}
+<h3 class="fw-bold mb-4"><i class="bi bi-trophy"></i> Stat Leaderboards</h3>
+
+{% if not players %}
+<div class="card"><div class="card-body text-center text-muted py-5">
+    <i class="bi bi-trophy" style="font-size:3rem;"></i>
+    <p class="mt-2 mb-0">No player stats available yet. Add game logs to populate leaderboards.</p>
+</div></div>
+{% else %}
+
+<div class="row g-4">
+    <!-- Scoring Leaders -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bullseye"></i> Scoring</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>#</th><th>Player</th><th class="text-center">PPG</th><th class="text-center">FG%</th><th class="text-center">3PT%</th><th class="text-center">FT%</th></tr></thead>
+                        <tbody>
+                        {% for p in players|sort(attribute='ppg', reverse=true) %}
+                        <tr>
+                            <td>{% if loop.index <= 3 %}<span class="badge {% if loop.index == 1 %}text-bg-warning{% elif loop.index == 2 %}text-bg-secondary{% else %}bg-dark{% endif %}">{{ loop.index }}</span>{% else %}{{ loop.index }}{% endif %}</td>
+                            <td>
+                                <span class="pos-badge pos-{{ p.position }}" style="width:22px;height:22px;line-height:22px;font-size:0.6rem;">{{ p.position }}</span>
+                                <a href="/players/{{ p.id }}" class="text-warning text-decoration-none">{% if p.jersey_number %}#{{ p.jersey_number }} {% endif %}{{ p.first_name[0] }}. {{ p.last_name }}</a>
+                            </td>
+                            <td class="text-center fw-bold">{{ p.ppg }}</td>
+                            <td class="text-center">{{ p.fg_pct }}%</td>
+                            <td class="text-center">{{ p.three_pct }}%</td>
+                            <td class="text-center">{{ p.ft_pct }}%</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rebounds & Assists -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-arrow-repeat"></i> Rebounds & Assists</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>#</th><th>Player</th><th class="text-center">RPG</th><th class="text-center">APG</th><th class="text-center">SPG</th><th class="text-center">BPG</th></tr></thead>
+                        <tbody>
+                        {% for p in players|sort(attribute='rpg', reverse=true) %}
+                        <tr>
+                            <td>{% if loop.index <= 3 %}<span class="badge {% if loop.index == 1 %}text-bg-warning{% elif loop.index == 2 %}text-bg-secondary{% else %}bg-dark{% endif %}">{{ loop.index }}</span>{% else %}{{ loop.index }}{% endif %}</td>
+                            <td>
+                                <span class="pos-badge pos-{{ p.position }}" style="width:22px;height:22px;line-height:22px;font-size:0.6rem;">{{ p.position }}</span>
+                                <a href="/players/{{ p.id }}" class="text-warning text-decoration-none">{{ p.first_name[0] }}. {{ p.last_name }}</a>
+                            </td>
+                            <td class="text-center fw-bold">{{ p.rpg }}</td>
+                            <td class="text-center">{{ p.apg }}</td>
+                            <td class="text-center">{{ p.spg }}</td>
+                            <td class="text-center">{{ p.bpg }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Metrics -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-graph-up-arrow"></i> Advanced Metrics</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>#</th><th>Player</th><th class="text-center">GP</th><th class="text-center">MPG</th><th class="text-center">PER</th><th class="text-center">TS%</th><th class="text-center">USG%</th><th class="text-center">ORTG</th><th class="text-center">PPG</th><th class="text-center">TO/G</th></tr></thead>
+                        <tbody>
+                        {% for p in players|sort(attribute='advanced.per', reverse=true) if p.advanced.per is not none %}
+                        <tr>
+                            <td>{% if loop.index <= 3 %}<span class="badge {% if loop.index == 1 %}text-bg-warning{% elif loop.index == 2 %}text-bg-secondary{% else %}bg-dark{% endif %}">{{ loop.index }}</span>{% else %}{{ loop.index }}{% endif %}</td>
+                            <td>
+                                <span class="pos-badge pos-{{ p.position }}" style="width:22px;height:22px;line-height:22px;font-size:0.6rem;">{{ p.position }}</span>
+                                <a href="/players/{{ p.id }}" class="text-warning text-decoration-none">{% if p.jersey_number %}#{{ p.jersey_number }} {% endif %}{{ p.first_name[0] }}. {{ p.last_name }}</a>
+                            </td>
+                            <td class="text-center">{{ p.games_played }}</td>
+                            <td class="text-center">{{ p.mpg }}</td>
+                            <td class="text-center fw-bold {% if p.advanced.per and p.advanced.per >= 15 %}text-warning{% elif p.advanced.per and p.advanced.per < 5 %}text-danger{% endif %}">{{ p.advanced.per }}</td>
+                            <td class="text-center {% if p.advanced.ts_pct and p.advanced.ts_pct >= 55 %}text-success{% elif p.advanced.ts_pct and p.advanced.ts_pct < 45 %}text-danger{% endif %}">{{ p.advanced.ts_pct }}%</td>
+                            <td class="text-center">{{ p.advanced.usg_pct }}%</td>
+                            <td class="text-center">{{ p.advanced.ortg }}</td>
+                            <td class="text-center">{{ p.ppg }}</td>
+                            <td class="text-center">{{ p.topg }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer text-muted" style="font-size:0.75rem;">
+                <strong>PER</strong> = Player Efficiency Rating &middot;
+                <strong>TS%</strong> = True Shooting % &middot;
+                <strong>USG%</strong> = Usage Rate &middot;
+                <strong>ORTG</strong> = Offensive Rating (pts per 40 min)
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

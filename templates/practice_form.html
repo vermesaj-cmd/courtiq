@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Practice' if plan else 'New Practice Plan' }} — CourtIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">{{ 'Edit Practice Plan' if plan else 'New Practice Plan' }}</h3>
+    <a href="/practices" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<form method="post" id="practice-form">
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header">Plan Details</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Plan Name *</label>
+                        <input type="text" class="form-control" name="name" value="{{ plan.name if plan else '' }}" placeholder="e.g. Game Day Prep" required>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="practice_date" value="{{ plan.practice_date if plan else '' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Total Minutes</label>
+                            <input type="number" class="form-control" name="total_minutes" value="{{ plan.total_minutes if plan else 90 }}" min="15" max="300">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Focus areas, reminders...">{{ plan.notes if plan else '' }}</textarea>
+                    </div>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" name="is_template" id="is_template" value="1" {% if plan and plan.is_template %}checked{% endif %}>
+                        <label class="form-check-label" for="is_template">Save as reusable template</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list-task"></i> Drills</span>
+                    <div>
+                        <span class="text-muted me-2" style="font-size:0.8rem;">Total: <strong id="total-drill-time">0</strong> min</span>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="addDrill()"><i class="bi bi-plus"></i> Add Drill</button>
+                    </div>
+                </div>
+                <div class="card-body" id="drills-container">
+                    <!-- Drills added dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-warning"><i class="bi bi-save"></i> {{ 'Update Plan' if plan else 'Create Plan' }}</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DRILL_CATS = ['warmup', 'shooting', 'ball_handling', 'defense', 'offense', 'conditioning', 'scrimmage', 'cooldown', 'other'];
+let drillCount = 0;
+
+function addDrill(name='', cat='other', dur=10, desc='') {
+    const i = drillCount++;
+    const html = `
+    <div class="drill-row mb-3 p-3" style="background:#21262d;border-radius:8px;" id="drill-${i}">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge text-bg-secondary">#${i+1}</span>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeDrill(${i})"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="row g-2">
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm" name="drill_name_${i}" value="${name}" placeholder="Drill name" required>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select form-select-sm" name="drill_cat_${i}">
+                    ${DRILL_CATS.map(c => `<option value="${c}" ${c===cat?'selected':''}>${c.replace('_',' ').replace(/^./,s=>s.toUpperCase())}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control" name="drill_dur_${i}" value="${dur}" min="1" max="120" onchange="updateTotal()">
+                    <span class="input-group-text">min</span>
+                </div>
+            </div>
+            <div class="col-12">
+                <input type="text" class="form-control form-control-sm" name="drill_desc_${i}" value="${desc}" placeholder="Description (optional)">
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('drills-container').insertAdjacentHTML('beforeend', html);
+    updateTotal();
+}
+
+function removeDrill(i) {
+    const el = document.getElementById('drill-' + i);
+    if (el) el.remove();
+    updateTotal();
+}
+
+function updateTotal() {
+    let total = 0;
+    document.querySelectorAll('[name^="drill_dur_"]').forEach(el => {
+        total += parseInt(el.value) || 0;
+    });
+    document.getElementById('total-drill-time').textContent = total;
+}
+
+// Pre-load existing drills
+{% if drills %}
+{% for d in drills %}
+addDrill({{ d.drill_name|tojson }}, {{ d.category|tojson }}, {{ d.duration_minutes }}, {{ (d.description or '')|tojson }});
+{% endfor %}
+{% else %}
+// Start with a few default rows
+addDrill('Layup Lines', 'warmup', 5, 'Full court layups, both sides');
+addDrill('', 'shooting', 15, '');
+addDrill('', 'offense', 15, '');
+{% endif %}
+</script>
+{% endblock %}

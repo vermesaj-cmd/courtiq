@@ -313,6 +313,11 @@ body {
 .cat-rebounding { background: #fb8c00; color: #fff; }
 .cat-passing { background: #00acc1; color: #fff; }
 .cat-other { background: #546e7a; color: #fff; }
+.cat-warmup { background: #ff7043; color: #fff; }
+.cat-ball_handling { background: #26c6da; color: #000; }
+.cat-offense { background: #ffa726; color: #000; }
+.cat-scrimmage { background: #7e57c2; color: #fff; }
+.cat-cooldown { background: #78909c; color: #fff; }
 
 /* Responsive tweaks */
 @media (max-width: 768px) {

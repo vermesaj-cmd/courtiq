@@ -66,6 +66,53 @@
             </div>
         </div>
 
+        <!-- Advanced Metrics -->
+        {% set adv = data.advanced_metrics %}
+        {% if adv and adv.per is not none %}
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-graph-up-arrow"></i> Advanced Metrics</div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <div class="stat-value" style="font-size:1.2rem;">{{ adv.per }}</div>
+                        <div class="stat-label">PER</div>
+                    </div>
+                    <div class="col">
+                        <div class="stat-value" style="font-size:1.2rem;">{{ adv.ts_pct }}%</div>
+                        <div class="stat-label">TS%</div>
+                    </div>
+                    <div class="col">
+                        <div class="stat-value" style="font-size:1.2rem;">{{ adv.usg_pct }}%</div>
+                        <div class="stat-label">USG%</div>
+                    </div>
+                    <div class="col">
+                        <div class="stat-value" style="font-size:1.2rem;">{{ adv.ortg }}</div>
+                        <div class="stat-label">ORTG</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Stat Trends -->
+        {% if data.game_logs|length >= 2 %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-graph-up"></i> Stat Trends</span>
+                <select class="form-select form-select-sm" style="width:auto;" id="trend-stat" onchange="updateTrendChart()">
+                    <option value="ppg">Points</option>
+                    <option value="rpg">Rebounds</option>
+                    <option value="apg">Assists</option>
+                    <option value="fg_pct">FG%</option>
+                    <option value="three_pct">3PT%</option>
+                </select>
+            </div>
+            <div class="card-body" style="height:220px;">
+                <canvas id="trend-chart"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Shot Chart -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between">
@@ -338,4 +385,60 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{% if data.game_logs|length >= 2 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+let trendChart = null;
+let trendData = null;
+
+fetch('/api/player/{{ p.id }}/trends')
+    .then(r => r.json())
+    .then(data => {
+        trendData = data;
+        updateTrendChart();
+    });
+
+function updateTrendChart() {
+    if (!trendData) return;
+    const stat = document.getElementById('trend-stat').value;
+    const labels = trendData.labels.map(l => {
+        const parts = l.split(' vs ');
+        return parts.length > 1 ? 'vs ' + parts[1] : l;
+    });
+
+    const colors = {ppg:'#ff8c00', rpg:'#4fc3f7', apg:'#66bb6a', fg_pct:'#ab47bc', three_pct:'#ef5350'};
+    const statLabels = {ppg:'Points', rpg:'Rebounds', apg:'Assists', fg_pct:'FG%', three_pct:'3PT%'};
+
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(document.getElementById('trend-chart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: statLabels[stat],
+                data: trendData[stat],
+                borderColor: colors[stat],
+                backgroundColor: colors[stat] + '33',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {legend: {display: false}},
+            scales: {
+                x: {ticks: {maxRotation: 45, font: {size: 10}}, grid: {color: '#21262d'}},
+                y: {beginAtZero: true, grid: {color: '#21262d'}}
+            }
+        }
+    });
+}
+</script>
+{% endif %}
 {% endblock %}

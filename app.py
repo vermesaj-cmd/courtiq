@@ -8,6 +8,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from database import (
     get_db, init_db, get_team_config, update_team_config,
     get_player_full, get_eval_averages, calculate_season_averages,
+    calc_advanced_metrics,
     seed_players, seed_default_user, verify_user, get_user_by_id, create_user,
     ZONE_NAMES, DATABASE_URL,
 )
@@ -208,14 +209,24 @@ def index():
         ORDER BY p.last_name, p.first_name
     """, (season,)).fetchall()
 
+    # Schedule data for dashboard
+    schedule = conn.execute(
+        "SELECT * FROM team_schedule ORDER BY game_date ASC"
+    ).fetchall()
+    sched_list = [dict(g) for g in schedule]
+    wins = sum(1 for g in sched_list if g.get("result") == "W")
+    losses = sum(1 for g in sched_list if g.get("result") == "L")
+    upcoming = [g for g in sched_list if not g.get("result")][:3]
+
     conn.close()
     return render_template("index.html",
         total=total, active=active,
         by_position=[dict(r) for r in by_position],
-        team_avgs=dict(team_avgs) if team_avgs else {},
+        team_avgs=team_avgs,
         recent_evals=[dict(r) for r in recent_evals],
         goal_counts={r["status"]: r["cnt"] for r in goal_counts},
         roster=[dict(r) for r in roster],
+        wins=wins, losses=losses, upcoming=upcoming,
     )
 
 
@@ -1136,6 +1147,307 @@ def team_settings():
         flash("Team settings updated.", "success")
         return redirect(url_for("index"))
     return render_template("settings.html", config=get_team_config())
+
+
+# ── Leaderboards ──────────────────────────────────────────────────
+@app.route("/leaderboards")
+def leaderboards():
+    config = get_team_config()
+    conn = get_db()
+
+    players_with_stats = conn.execute("""
+        SELECT p.id, p.first_name, p.last_name, p.position, p.jersey_number,
+               sa.games_played, sa.ppg, sa.rpg, sa.apg, sa.spg, sa.bpg,
+               sa.fg_pct, sa.three_pct, sa.ft_pct, sa.topg, sa.mpg
+        FROM players p
+        JOIN season_averages sa ON sa.player_id = p.id AND sa.season = ?
+        WHERE p.status = 'active' AND sa.games_played > 0
+        ORDER BY p.last_name
+    """, (config["season"],)).fetchall()
+
+    players = [dict(p) for p in players_with_stats]
+
+    # Calculate advanced metrics per player
+    for p in players:
+        logs = conn.execute(
+            "SELECT * FROM game_logs WHERE player_id = ?", (p["id"],)
+        ).fetchall()
+        p["advanced"] = calc_advanced_metrics([dict(g) for g in logs])
+
+    conn.close()
+
+    categories = [
+        ("Scoring", [
+            ("PPG", "ppg", False), ("FG%", "fg_pct", False),
+            ("3PT%", "three_pct", False), ("FT%", "ft_pct", False),
+        ]),
+        ("Rebounds & Assists", [
+            ("RPG", "rpg", False), ("APG", "apg", False),
+        ]),
+        ("Defense", [
+            ("SPG", "spg", False), ("BPG", "bpg", False),
+        ]),
+        ("Advanced", [
+            ("PER", "advanced.per", True), ("TS%", "advanced.ts_pct", True),
+            ("USG%", "advanced.usg_pct", True), ("ORTG", "advanced.ortg", True),
+        ]),
+    ]
+
+    return render_template("leaderboards.html", players=players, categories=categories)
+
+
+# ── Game Schedule ─────────────────────────────────────────────────
+@app.route("/schedule")
+def schedule():
+    conn = get_db()
+    games = conn.execute(
+        "SELECT * FROM team_schedule ORDER BY game_date ASC"
+    ).fetchall()
+    conn.close()
+
+    game_list = [dict(g) for g in games]
+    wins = sum(1 for g in game_list if g.get("result") == "W")
+    losses = sum(1 for g in game_list if g.get("result") == "L")
+    upcoming = [g for g in game_list if not g.get("result")]
+    completed = [g for g in game_list if g.get("result")]
+
+    return render_template("schedule.html",
+        games=game_list, wins=wins, losses=losses,
+        upcoming=upcoming, completed=completed)
+
+
+@app.route("/schedule/add", methods=["GET", "POST"])
+def add_game():
+    if request.method == "POST":
+        conn = get_db()
+        f = request.form
+        conn.execute("""
+            INSERT INTO team_schedule (game_date, opponent, location, home_away, result, team_score, opp_score, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            f["game_date"], f["opponent"], f.get("location", ""),
+            f.get("home_away", "home"),
+            f.get("result") or None,
+            int(f["team_score"]) if f.get("team_score") else None,
+            int(f["opp_score"]) if f.get("opp_score") else None,
+            f.get("notes", ""),
+        ))
+        conn.commit()
+        conn.close()
+        flash("Game added to schedule.", "success")
+        return redirect(url_for("schedule"))
+    return render_template("schedule_form.html", game=None)
+
+
+@app.route("/schedule/<int:game_id>/edit", methods=["GET", "POST"])
+def edit_game(game_id):
+    conn = get_db()
+    if request.method == "POST":
+        f = request.form
+        conn.execute("""
+            UPDATE team_schedule SET game_date=?, opponent=?, location=?, home_away=?,
+            result=?, team_score=?, opp_score=?, notes=? WHERE id=?
+        """, (
+            f["game_date"], f["opponent"], f.get("location", ""),
+            f.get("home_away", "home"),
+            f.get("result") or None,
+            int(f["team_score"]) if f.get("team_score") else None,
+            int(f["opp_score"]) if f.get("opp_score") else None,
+            f.get("notes", ""), game_id,
+        ))
+        conn.commit()
+        conn.close()
+        flash("Game updated.", "success")
+        return redirect(url_for("schedule"))
+    game = conn.execute("SELECT * FROM team_schedule WHERE id = ?", (game_id,)).fetchone()
+    conn.close()
+    if not game:
+        return "Not found", 404
+    return render_template("schedule_form.html", game=dict(game))
+
+
+@app.route("/schedule/<int:game_id>/delete", methods=["POST"])
+def delete_game(game_id):
+    conn = get_db()
+    conn.execute("DELETE FROM team_schedule WHERE id = ?", (game_id,))
+    conn.commit()
+    conn.close()
+    flash("Game removed.", "success")
+    return redirect(url_for("schedule"))
+
+
+# ── Practice Planner ──────────────────────────────────────────────
+@app.route("/practices")
+def practices():
+    conn = get_db()
+    plans = conn.execute(
+        "SELECT * FROM practice_plans ORDER BY practice_date DESC, created_at DESC"
+    ).fetchall()
+    templates = conn.execute(
+        "SELECT * FROM practice_plans WHERE is_template = 1 ORDER BY name"
+    ).fetchall()
+    conn.close()
+    return render_template("practices.html",
+        plans=[dict(p) for p in plans],
+        templates=[dict(t) for t in templates])
+
+
+@app.route("/practices/add", methods=["GET", "POST"])
+def add_practice():
+    if request.method == "POST":
+        conn = get_db()
+        f = request.form
+        cur = conn.execute("""
+            INSERT INTO practice_plans (name, practice_date, total_minutes, notes, is_template)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            f["name"], f.get("practice_date") or None,
+            int(f.get("total_minutes", 90)),
+            f.get("notes", ""),
+            1 if f.get("is_template") else 0,
+        ))
+        plan_id = cur.lastrowid
+
+        # Parse drills from form
+        i = 0
+        while f.get(f"drill_name_{i}"):
+            conn.execute("""
+                INSERT INTO practice_drills (plan_id, drill_name, category, duration_minutes, description, drill_order)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                plan_id, f[f"drill_name_{i}"],
+                f.get(f"drill_cat_{i}", "other"),
+                int(f.get(f"drill_dur_{i}", 10)),
+                f.get(f"drill_desc_{i}", ""),
+                i + 1,
+            ))
+            i += 1
+
+        conn.commit()
+        conn.close()
+        flash("Practice plan created.", "success")
+        return redirect(url_for("practice_detail", plan_id=plan_id))
+
+    # Check if cloning from a template
+    conn = get_db()
+    templates = conn.execute(
+        "SELECT * FROM practice_plans WHERE is_template = 1 ORDER BY name"
+    ).fetchall()
+    template_drills = {}
+    for t in templates:
+        drills = conn.execute(
+            "SELECT * FROM practice_drills WHERE plan_id = ? ORDER BY drill_order", (t["id"],)
+        ).fetchall()
+        template_drills[t["id"]] = [dict(d) for d in drills]
+    conn.close()
+
+    clone_id = request.args.get("clone")
+    clone_drills = []
+    if clone_id:
+        clone_drills = template_drills.get(int(clone_id), [])
+
+    return render_template("practice_form.html",
+        plan=None, drills=clone_drills,
+        templates=[dict(t) for t in templates],
+        template_drills=template_drills)
+
+
+@app.route("/practices/<int:plan_id>")
+def practice_detail(plan_id):
+    conn = get_db()
+    plan = conn.execute("SELECT * FROM practice_plans WHERE id = ?", (plan_id,)).fetchone()
+    if not plan:
+        conn.close()
+        return "Not found", 404
+    drills = conn.execute(
+        "SELECT * FROM practice_drills WHERE plan_id = ? ORDER BY drill_order", (plan_id,)
+    ).fetchall()
+    conn.close()
+    return render_template("practice_detail.html",
+        plan=dict(plan), drills=[dict(d) for d in drills])
+
+
+@app.route("/practices/<int:plan_id>/edit", methods=["GET", "POST"])
+def edit_practice(plan_id):
+    conn = get_db()
+    if request.method == "POST":
+        f = request.form
+        conn.execute("""
+            UPDATE practice_plans SET name=?, practice_date=?, total_minutes=?, notes=?, is_template=?
+            WHERE id=?
+        """, (
+            f["name"], f.get("practice_date") or None,
+            int(f.get("total_minutes", 90)),
+            f.get("notes", ""),
+            1 if f.get("is_template") else 0,
+            plan_id,
+        ))
+        # Replace drills
+        conn.execute("DELETE FROM practice_drills WHERE plan_id = ?", (plan_id,))
+        i = 0
+        while f.get(f"drill_name_{i}"):
+            conn.execute("""
+                INSERT INTO practice_drills (plan_id, drill_name, category, duration_minutes, description, drill_order)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                plan_id, f[f"drill_name_{i}"],
+                f.get(f"drill_cat_{i}", "other"),
+                int(f.get(f"drill_dur_{i}", 10)),
+                f.get(f"drill_desc_{i}", ""),
+                i + 1,
+            ))
+            i += 1
+        conn.commit()
+        conn.close()
+        flash("Practice plan updated.", "success")
+        return redirect(url_for("practice_detail", plan_id=plan_id))
+
+    plan = conn.execute("SELECT * FROM practice_plans WHERE id = ?", (plan_id,)).fetchone()
+    drills = conn.execute(
+        "SELECT * FROM practice_drills WHERE plan_id = ? ORDER BY drill_order", (plan_id,)
+    ).fetchall()
+    templates = conn.execute(
+        "SELECT * FROM practice_plans WHERE is_template = 1 ORDER BY name"
+    ).fetchall()
+    conn.close()
+    if not plan:
+        return "Not found", 404
+    return render_template("practice_form.html",
+        plan=dict(plan), drills=[dict(d) for d in drills],
+        templates=[dict(t) for t in templates], template_drills={})
+
+
+@app.route("/practices/<int:plan_id>/delete", methods=["POST"])
+def delete_practice(plan_id):
+    conn = get_db()
+    conn.execute("DELETE FROM practice_plans WHERE id = ?", (plan_id,))
+    conn.commit()
+    conn.close()
+    flash("Practice plan deleted.", "success")
+    return redirect(url_for("practices"))
+
+
+# ── Stat Trends API ───────────────────────────────────────────────
+@app.route("/api/player/<int:player_id>/trends")
+def api_player_trends(player_id):
+    conn = get_db()
+    logs = conn.execute(
+        "SELECT game_date, opponent, points, rebounds, assists, fg_made, fg_attempted, three_made, three_attempted, ft_made, ft_attempted FROM game_logs WHERE player_id = ? ORDER BY game_date ASC",
+        (player_id,)
+    ).fetchall()
+    conn.close()
+
+    data = {"labels": [], "ppg": [], "rpg": [], "apg": [], "fg_pct": [], "three_pct": []}
+    for g in logs:
+        g = dict(g)
+        data["labels"].append(f"{g['game_date']} vs {g['opponent']}")
+        data["ppg"].append(g["points"] or 0)
+        data["rpg"].append(g["rebounds"] or 0)
+        data["apg"].append(g["assists"] or 0)
+        data["fg_pct"].append(round(g["fg_made"] / g["fg_attempted"] * 100, 1) if g["fg_attempted"] else 0)
+        data["three_pct"].append(round(g["three_made"] / g["three_attempted"] * 100, 1) if g["three_attempted"] else 0)
+
+    return jsonify(data)
 
 
 if __name__ == "__main__":

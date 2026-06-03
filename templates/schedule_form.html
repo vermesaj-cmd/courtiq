@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Game' if game else 'Add Game' }} — CourtIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">{{ 'Edit Game' if game else 'Add Game' }}</h3>
+    <a href="/schedule" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="max-width:600px;">
+    <div class="card-body">
+        <form method="post">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Date *</label>
+                    <input type="date" class="form-control" name="game_date" value="{{ game.game_date if game else '' }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Opponent *</label>
+                    <input type="text" class="form-control" name="opponent" value="{{ game.opponent if game else '' }}" placeholder="e.g. Riverside High" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" name="location" value="{{ game.location if game else '' }}" placeholder="e.g. Home Gym">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Home / Away</label>
+                    <select class="form-select" name="home_away">
+                        <option value="home" {% if game and game.home_away == 'home' %}selected{% endif %}>Home</option>
+                        <option value="away" {% if game and game.home_away == 'away' %}selected{% endif %}>Away</option>
+                        <option value="neutral" {% if game and game.home_away == 'neutral' %}selected{% endif %}>Neutral</option>
+                    </select>
+                </div>
+
+                <hr class="border-secondary">
+                <p class="text-muted mb-0" style="font-size:0.85rem;">Leave result blank for upcoming games:</p>
+
+                <div class="col-md-4">
+                    <label class="form-label">Result</label>
+                    <select class="form-select" name="result">
+                        <option value="">— TBD —</option>
+                        <option value="W" {% if game and game.result == 'W' %}selected{% endif %}>Win</option>
+                        <option value="L" {% if game and game.result == 'L' %}selected{% endif %}>Loss</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Our Score</label>
+                    <input type="number" class="form-control" name="team_score" value="{{ game.team_score if game and game.team_score is not none else '' }}" min="0">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Opp Score</label>
+                    <input type="number" class="form-control" name="opp_score" value="{{ game.opp_score if game and game.opp_score is not none else '' }}" min="0">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" name="notes" rows="2" placeholder="Optional game notes">{{ game.notes if game else '' }}</textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-warning mt-3"><i class="bi bi-save"></i> {{ 'Update' if game else 'Add Game' }}</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
