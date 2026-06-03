@@ -1165,14 +1165,26 @@ def leaderboards():
         ORDER BY p.last_name
     """, (config["season"],)).fetchall()
 
-    players = [dict(p) for p in players_with_stats]
+    players = []
+    for row in players_with_stats:
+        p = dict(row)
+        # Ensure numeric fields default to 0 for safe Jinja sorting
+        for k in ("ppg", "rpg", "apg", "spg", "bpg", "fg_pct", "three_pct",
+                  "ft_pct", "topg", "mpg", "games_played"):
+            if p.get(k) is None:
+                p[k] = 0
+        players.append(p)
 
-    # Calculate advanced metrics per player
+    # Calculate advanced metrics per player – flatten into player dict
     for p in players:
         logs = conn.execute(
             "SELECT * FROM game_logs WHERE player_id = ?", (p["id"],)
         ).fetchall()
-        p["advanced"] = calc_advanced_metrics([dict(g) for g in logs])
+        adv = calc_advanced_metrics([dict(g) for g in logs])
+        p["adv_per"] = adv.get("per") or 0
+        p["adv_ts_pct"] = adv.get("ts_pct") or 0
+        p["adv_usg_pct"] = adv.get("usg_pct") or 0
+        p["adv_ortg"] = adv.get("ortg") or 0
 
     conn.close()
 
@@ -1188,8 +1200,8 @@ def leaderboards():
             ("SPG", "spg", False), ("BPG", "bpg", False),
         ]),
         ("Advanced", [
-            ("PER", "advanced.per", True), ("TS%", "advanced.ts_pct", True),
-            ("USG%", "advanced.usg_pct", True), ("ORTG", "advanced.ortg", True),
+            ("PER", "adv_per", True), ("TS%", "adv_ts_pct", True),
+            ("USG%", "adv_usg_pct", True), ("ORTG", "adv_ortg", True),
         ]),
     ]
 

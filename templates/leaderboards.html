@@ -79,7 +79,7 @@
                     <table class="table table-hover mb-0">
                         <thead><tr><th>#</th><th>Player</th><th class="text-center">GP</th><th class="text-center">MPG</th><th class="text-center">PER</th><th class="text-center">TS%</th><th class="text-center">USG%</th><th class="text-center">ORTG</th><th class="text-center">PPG</th><th class="text-center">TO/G</th></tr></thead>
                         <tbody>
-                        {% for p in players|sort(attribute='advanced.per', reverse=true) if p.advanced.per is not none %}
+                        {% for p in players|sort(attribute='adv_per', reverse=true) if p.adv_per > 0 %}
                         <tr>
                             <td>{% if loop.index <= 3 %}<span class="badge {% if loop.index == 1 %}text-bg-warning{% elif loop.index == 2 %}text-bg-secondary{% else %}bg-dark{% endif %}">{{ loop.index }}</span>{% else %}{{ loop.index }}{% endif %}</td>
                             <td>
@@ -88,10 +88,10 @@
                             </td>
                             <td class="text-center">{{ p.games_played }}</td>
                             <td class="text-center">{{ p.mpg }}</td>
-                            <td class="text-center fw-bold {% if p.advanced.per and p.advanced.per >= 15 %}text-warning{% elif p.advanced.per and p.advanced.per < 5 %}text-danger{% endif %}">{{ p.advanced.per }}</td>
-                            <td class="text-center {% if p.advanced.ts_pct and p.advanced.ts_pct >= 55 %}text-success{% elif p.advanced.ts_pct and p.advanced.ts_pct < 45 %}text-danger{% endif %}">{{ p.advanced.ts_pct }}%</td>
-                            <td class="text-center">{{ p.advanced.usg_pct }}%</td>
-                            <td class="text-center">{{ p.advanced.ortg }}</td>
+                            <td class="text-center fw-bold {% if p.adv_per and p.adv_per >= 15 %}text-warning{% elif p.adv_per and p.adv_per < 5 %}text-danger{% endif %}">{{ p.adv_per }}</td>
+                            <td class="text-center {% if p.adv_ts_pct and p.adv_ts_pct >= 55 %}text-success{% elif p.adv_ts_pct and p.adv_ts_pct < 45 %}text-danger{% endif %}">{{ p.adv_ts_pct }}%</td>
+                            <td class="text-center">{{ p.adv_usg_pct }}%</td>
+                            <td class="text-center">{{ p.adv_ortg }}</td>
                             <td class="text-center">{{ p.ppg }}</td>
                             <td class="text-center">{{ p.topg }}</td>
                         </tr>
