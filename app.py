@@ -170,8 +170,10 @@ def index():
     config = get_team_config()
     season = config["season"]
 
-    total = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
-    active = conn.execute("SELECT COUNT(*) FROM players WHERE status = 'active'").fetchone()[0]
+    total_row = conn.execute("SELECT COUNT(*) AS cnt FROM players").fetchone()
+    total = total_row["cnt"] if isinstance(total_row, dict) else total_row[0]
+    active_row = conn.execute("SELECT COUNT(*) AS cnt FROM players WHERE status = 'active'").fetchone()
+    active = active_row["cnt"] if isinstance(active_row, dict) else active_row[0]
 
     by_position = conn.execute(
         "SELECT position, COUNT(*) as cnt FROM players WHERE status = 'active' GROUP BY position ORDER BY position"
