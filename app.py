@@ -179,14 +179,15 @@ def index():
         "SELECT position, COUNT(*) as cnt FROM players WHERE status = 'active' GROUP BY position ORDER BY position"
     ).fetchall()
 
-    team_avgs = conn.execute("""
-        SELECT ROUND(AVG(sa.ppg), 1) as ppg, ROUND(AVG(sa.rpg), 1) as rpg,
-               ROUND(AVG(sa.apg), 1) as apg, ROUND(AVG(sa.fg_pct), 1) as fg_pct,
-               ROUND(AVG(sa.three_pct), 1) as three_pct, ROUND(AVG(sa.ft_pct), 1) as ft_pct
+    team_avgs_raw = conn.execute("""
+        SELECT AVG(sa.ppg) as ppg, AVG(sa.rpg) as rpg,
+               AVG(sa.apg) as apg, AVG(sa.fg_pct) as fg_pct,
+               AVG(sa.three_pct) as three_pct, AVG(sa.ft_pct) as ft_pct
         FROM season_averages sa
         JOIN players p ON p.id = sa.player_id
         WHERE p.status = 'active' AND sa.season = ?
     """, (season,)).fetchone()
+    team_avgs = {k: round(float(v), 1) if v else 0 for k, v in (dict(team_avgs_raw) if team_avgs_raw else {}).items()}
 
     recent_evals = conn.execute("""
         SELECT ce.*, p.first_name, p.last_name
