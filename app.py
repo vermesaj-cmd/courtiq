@@ -1375,8 +1375,18 @@ def practice_detail(plan_id):
         "SELECT * FROM practice_drills WHERE plan_id = ? ORDER BY drill_order", (plan_id,)
     ).fetchall()
     conn.close()
+    drills_list = [dict(d) for d in drills]
+
+    # Compute time breakdown by category for the template
+    cat_minutes = {}
+    for d in drills_list:
+        cat = d.get("category", "other")
+        cat_minutes[cat] = cat_minutes.get(cat, 0) + (d.get("duration_minutes") or 0)
+    # Sort descending by minutes
+    cat_breakdown = sorted(cat_minutes.items(), key=lambda x: x[1], reverse=True)
+
     return render_template("practice_detail.html",
-        plan=dict(plan), drills=[dict(d) for d in drills])
+        plan=dict(plan), drills=drills_list, cat_breakdown=cat_breakdown)
 
 
 @app.route("/practices/<int:plan_id>/edit", methods=["GET", "POST"])

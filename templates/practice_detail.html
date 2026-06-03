@@ -32,15 +32,11 @@
         </div>
 
         <!-- Time Breakdown by Category -->
-        {% if drills %}
+        {% if cat_breakdown %}
         <div class="card mt-3">
             <div class="card-header">Time Breakdown</div>
             <div class="card-body">
-                {% set cats = {} %}
-                {% for d in drills %}
-                    {% if cats.update({d.category: cats.get(d.category, 0) + d.duration_minutes}) %}{% endif %}
-                {% endfor %}
-                {% for cat, mins in cats.items()|sort(key=lambda x: -x[1]) %}
+                {% for cat, mins in cat_breakdown %}
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="cat-badge cat-{{ cat }}">{{ cat|replace('_', ' ') }}</span>
                     <span class="fw-semibold">{{ mins }} min</span>
