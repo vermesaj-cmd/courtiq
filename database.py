@@ -707,8 +707,10 @@ def calc_advanced_metrics(game_logs):
     else:
         usg_pct = None
 
-    # Offensive Rating (points produced per 40 minutes)
-    ortg = round(total_pts / total_min * 40, 1) if total_min > 0 else None
+    # Offensive Rating — points per 100 possessions (individual estimate)
+    # Possessions ≈ FGA + 0.44*FTA + TO (same estimate used for USG%)
+    total_poss = total_fga + 0.44 * total_fta + total_to
+    ortg = round(total_pts / total_poss * 100, 1) if total_poss > 0 else None
 
     return {"per": per, "ts_pct": ts_pct, "usg_pct": usg_pct, "ortg": ortg}
 
